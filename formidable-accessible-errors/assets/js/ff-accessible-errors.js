@@ -69,6 +69,24 @@
     bindErrorLinkNavigation(document);
 	muteDefaultFormidableAlert(document);
 	decorateInlineErrors(document);
+	
+	// When an AJAX submit returns validation errors
+	$(document).on('frmFormErrors', function (event, form, response) {
+	  // `form` is the <form> element that was just updated
+	  decorateInlineErrors(form);
+	  bindErrorLinkNavigation(form);
+	  muteDefaultFormidableAlert($(form).parent());
+	  focusErrorSummaryIfPresent(form);
+	});
+
+	// Multipage forms with AJAX page loads:
+	$(document).on('frmPageChanged', function (event, form, response) {
+	  decorateInlineErrors(form);
+	  bindErrorLinkNavigation(form);
+	  muteDefaultFormidableAlert($(form).parent()); // or muteDefaultFormidableAlert(form);
+	});
+
+	
   });
 
   /**
