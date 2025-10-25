@@ -2,8 +2,8 @@
 /**
  * Plugin Name: Formidable – Accessible Error Summary
  * Description: Accessible error summary for Formidable Forms: focuses the summary, and links each error to the field. Disables default first-error focus & per-field alert roles.
- * Version:     1.1.0
- * Author:      Your Name
+ * Version:     1.2.0
+ * Author:      Adem Cifcioglu
  * License:     GPL-2.0+
  */
 
