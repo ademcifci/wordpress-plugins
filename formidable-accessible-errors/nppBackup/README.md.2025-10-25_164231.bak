@@ -110,10 +110,10 @@ add_filter( 'ff_accessible_errors_inline_icon_aria_label', function() {
 ## 🧑‍💻 Developer Notes
 
 **Main hooks used:**
-- `frm_validate_entry` - https://formidableforms.com/knowledgebase/frm_validate_entry/
-- `frm_invalid_error_message` - https://formidableforms.com/knowledgebase/frm_invalid_error_message/
-- `frm_focus_first_error` - https://formidableforms.com/knowledgebase/frm_focus_first_error/
-- `frm_include_alert_role_on_field_errors` - https://formidableforms.com/knowledgebase/frm_include_alert_role_on_field_errors/
+- `frm_validate_entry`
+- `frm_invalid_error_message`
+- `frm_focus_first_error`
+- `frm_include_alert_role_on_field_errors`
 
 **Files:**
 - `formidable-accessible-errors.php` – Core plugin logic and filters.  
