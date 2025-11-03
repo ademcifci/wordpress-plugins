@@ -65,13 +65,14 @@ class FF_Accessible_Error_Summary {
 			$msg = trim( $msg );
 
 			$field_id = self::resolve_field_id( $key, $field_map );
-
-			if ( $field_id ) {
-				$container_id = 'frm_field_' . $field_id . '_container';
-				$out .= '<li class="ff-error-item"><a class="ff-error-link" href="#' . esc_attr( $container_id ) . '" data-ff-field-id="' . esc_attr( $field_id ) . '">' . esc_html( $msg ) . '</a></li>';
-			} else {
-				// Non-field/global errors.
-				$out .= '<li class="ff-error-item">' . esc_html( $msg ) . '</li>';
+			if(! empty($msg)){
+				if ( $field_id ) {
+					$container_id = 'frm_field_' . $field_id . '_container';
+					$out .= '<li class="ff-error-item"><a class="ff-error-link" href="#' . esc_attr( $container_id ) . '" data-ff-field-id="' . esc_attr( $field_id ) . '">' . esc_html( $msg ) . '</a></li>';
+				} else {
+					// Non-field/global errors.
+					$out .= '<li class="ff-error-item">' . esc_html( $msg ) . '</li>';
+				}
 			}
 		}
 
@@ -187,7 +188,7 @@ class FF_Accessible_Error_Summary {
 				'ff-accessible-errors',
 				plugins_url( 'assets/css/ff-accessible-errors.css', __FILE__ ),
 				[],
-				'1.1.1'
+				'1.2.0'
 			);
 			wp_enqueue_style( 'ff-accessible-errors' );
 		}

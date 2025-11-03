@@ -1,0 +1,9 @@
+/* CSS-only override for the builder tile icon
+   Targets the Simple Progress item (li#simple_progress) and replaces its inline
+   <svg><use/></svg> icon with our background SVG. */
+li#simple_progress .frmsvg {
+  width: 24px;
+  height: 24px;
+  background: url('../images/simple-progress.svg') no-repeat center / contain;
+}
+li#simple_progress .frmsvg use { display: none; }
