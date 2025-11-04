@@ -30,7 +30,6 @@ add_action( 'plugins_loaded', function () {
     require_once FRM_SP_PLUGIN_DIR . 'includes/class-frm-simple-progress-field.php';
 
     // Show field in the builder palette (Lite & Pro filters for safety).
-    add_filter( 'frm_available_fields', [ 'Frm_Simple_Progress_Field', 'register_available_field' ] );
     add_filter( 'frm_pro_available_fields', [ 'Frm_Simple_Progress_Field', 'register_available_field' ] );
 
     // Map field type to our class when Formidable requests it.
