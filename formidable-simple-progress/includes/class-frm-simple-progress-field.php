@@ -11,16 +11,12 @@ class Frm_Simple_Progress_Field extends FrmFieldType {
 
     protected $type = 'simple_progress';
     protected $has_for_label = false;
+    // Disable the Formidable HTML wrapper for this field so we
+    // control output entirely via front_field_input(). This also
+    // prevents empty container divs when auto-inject is enabled.
+    protected $has_html = false;
 
-    public function default_html() {
-        $default_html = <<<HTML
-<div id="frm_field_[id]_container" class="frm_form_field form-field">
-    [input]
-    [if description]<div class="frm_description" id="frm_desc_field_[key]">[description]</div>[/if description]
-</div>
-HTML;
-        return $default_html;
-    }
+    // No default_html: wrapper disabled via $has_html = false.
 
     protected function field_settings_for_type() {
         $settings = array(

@@ -5,7 +5,7 @@ class FF_FieldsetEnd extends FrmFieldType {
 	/**
 	 * @var string
 	 */
-	protected $type = 'fieldset-end';
+    protected $type = 'ff-fieldset-end';
 
 	/**
 	 * This field doesn't store data.

@@ -11,11 +11,16 @@
 
 if ( ! defined( 'ABSPATH' ) ) exit;
 
+// Reusable plugin version constant (keeps enqueue versions DRY)
+if ( ! defined( 'FF_FIELDSET_CONTAINER_VERSION' ) ) {
+    define( 'FF_FIELDSET_CONTAINER_VERSION', '1.3.0' );
+}
+
 /**
  * Add the autoloader.
  */
 function ff_fieldset_container_load() {
-	spl_autoload_register( 'ff_fieldset_container_autoloader' );
+    spl_autoload_register( 'ff_fieldset_container_autoloader' );
 }
 add_action( 'plugins_loaded', 'ff_fieldset_container_load' );
 
@@ -47,21 +52,30 @@ function ff_fieldset_get_field_type_class( $class, $field_type ) {
 	}
 	return $class;
 }
-add_filter( 'frm_get_field_type_class', 'ff_fieldset_get_field_type_class', 10, 2 );
+add_filter( 'frm_get_field_type_class', 'ff_fieldset_get_field_type_class', 20, 2 );
 
 /**
  * Add the field buttons to the form builder.
  */
 function ff_fieldset_add_fields( $fields ) {
-	$fields['fieldset-start'] = array(
-		'name' => __( 'Fieldset Start', 'ff-fieldset-container' ),
-		'icon' => 'frm_icon_font frm-square-o',
-	);
-	
-	$fields['fieldset-end'] = array(
-		'name' => __( 'Fieldset End', 'ff-fieldset-container' ),
-		'icon' => 'frm_icon_font frm-square',
-	);
+    // Register namespaced slugs for new inserts
+    $fields['ff-fieldset-start'] = array(
+        'name' => __( 'Fieldset Start', 'ff-fieldset-container' ),
+        'icon' => 'frm_icon_font frm-square-o',
+        'defaults' => array(
+            'name' => '',
+            'description' => '',
+        ),
+    );
+    
+    $fields['ff-fieldset-end'] = array(
+        'name' => __( 'Fieldset End', 'ff-fieldset-container' ),
+        'icon' => 'frm_icon_font frm-square',
+        'defaults' => array(
+            'name' => '',
+            'description' => '',
+        ),
+    );
 	
 	return $fields;
 }
@@ -79,23 +93,35 @@ add_action( 'plugins_loaded', 'ff_fieldset_container_load_textdomain' );
  * Enqueue front-end styles.
  */
 function ff_fieldset_container_enqueue_styles() {
-	// Only enqueue if Formidable Forms is active and we're viewing a form
-	if ( class_exists( 'FrmAppHelper' ) ) {
-		wp_enqueue_style(
-			'ff-fieldset-container',
-			plugins_url( 'assets/css/fieldset-container.css', __FILE__ ),
-			array(),
-			'1.3.0'
-		);
-	}
+    // Only enqueue if Formidable Forms is active and we're viewing a form
+    if ( class_exists( 'FrmAppHelper' ) ) {
+        wp_enqueue_style(
+            'ff-fieldset-container',
+            plugins_url( 'assets/css/fieldset-container.css', __FILE__ ),
+            array(),
+            FF_FIELDSET_CONTAINER_VERSION
+        );
+    }
 }
 add_action( 'wp_enqueue_scripts', 'ff_fieldset_container_enqueue_styles' );
 
 
-	// Admin icon style for builder palette.
-	add_action( 'admin_enqueue_scripts', function(){
-	wp_enqueue_style( 'ff_fieldset_container-admin', plugins_url('assets/css/admin.css', __FILE__ ), array(), '1.3.0');
-	}, 20 );
+	// Admin icon style for builder palette — scope to Formidable builder screens only.
+    function ff_fieldset_container_enqueue_admin_styles( $hook_suffix ){
+        if ( ! class_exists( 'FrmAppHelper' ) ) {
+            return; // Only load when Formidable Forms is active
+        }
+
+		// Ensure we're on the Formidable top-level page
+		$page = isset( $_GET['page'] ) ? sanitize_key( $_GET['page'] ) : '';
+		if ( 'formidable' !== $page ) {
+			return;
+		}
+
+        // Enqueue admin CSS for builder palette icons
+        wp_enqueue_style( 'ff_fieldset_container-admin', plugins_url( 'assets/css/admin.css', __FILE__ ), array(), FF_FIELDSET_CONTAINER_VERSION );
+    }
+    add_action( 'admin_enqueue_scripts', 'ff_fieldset_container_enqueue_admin_styles', 20 );
 
 /**
  * 🔑 The important part: override the rendered HTML for our types.
@@ -106,7 +132,7 @@ add_action( 'wp_enqueue_scripts', 'ff_fieldset_container_enqueue_styles' );
 add_filter( 'frm_custom_html', function( $custom_html, $type = null, $field = null, $atts = null ) {
 
 	// Only intercept our two custom types.
-	if ( 'fieldset-start' === $type ) {
+    if ( in_array( $type, array( 'fieldset-start', 'ff-fieldset-start' ), true ) ) {
 		
 		/**
 		 * Use Formidable placeholders so values are auto-substituted:
@@ -121,23 +147,23 @@ add_filter( 'frm_custom_html', function( $custom_html, $type = null, $field = nu
 		return $instance->front_field_input( array( 'field' => $field ), $atts );
 	}
 
-	if ( 'fieldset-end' === $type ) {
+    if ( in_array( $type, array( 'fieldset-end', 'ff-fieldset-end' ), true ) ) {
 		// Just the closing tag, nothing else.
 		$instance = new FF_FieldsetEnd();
 		return $instance->front_field_input( array( 'field' => $field ), $atts );
 	}
 
 	return $custom_html;
-}, 10, 4 );
+}, 20, 4 );
 
 /**
  * Save custom field option for legend_visible and regenerate custom HTML using the class
  */
 add_filter( 'frm_update_field_options', 'ff_fieldset_update_field_options', 10, 3 );
 function ff_fieldset_update_field_options( $field_options, $field, $values ) {
-	if ( $field->type != 'fieldset-start' ) {
-		return $field_options;
-	}
+    if ( $field->type !== 'fieldset-start' && $field->type !== 'ff-fieldset-start' ) {
+        return $field_options;
+    }
 	
 	// The posted value comes as 'legend_visible_FIELDID'
 	$option_key = 'legend_visible_' . $field->id;
@@ -152,3 +178,23 @@ function ff_fieldset_update_field_options( $field_options, $field, $values ) {
 	
 	return $field_options;
 }
+
+/**
+ * Map additional alias slugs to our classes to reduce collision risk while
+ * keeping backward compatibility with existing forms.
+ */
+function ff_fieldset_container_extend_type_mapping( $class, $field_type ) {
+    if ( $field_type === 'ff-fieldset-start' ) {
+        return 'FF_FieldsetStart';
+    }
+    if ( $field_type === 'ff-fieldset-end' ) {
+        return 'FF_FieldsetEnd';
+    }
+    return $class;
+}
+add_filter( 'frm_get_field_type_class', 'ff_fieldset_container_extend_type_mapping', 21, 2 );
+
+/**
+ * Admin warning: detect mis-nested or unmatched fieldset Start/End pairs on the builder screen.
+ */
+// Builder validation/notice logic has been removed per user request.

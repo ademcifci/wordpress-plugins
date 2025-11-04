@@ -5,7 +5,7 @@ class FF_FieldsetStart extends FrmFieldType {
 	/**
 	 * @var string
 	 */
-	protected $type = 'fieldset-start';
+    protected $type = 'ff-fieldset-start';
 
 	/**
 	 * This field doesn't store data.
@@ -59,11 +59,12 @@ class FF_FieldsetStart extends FrmFieldType {
 	/**
 	 * Get the type of field being displayed - required for custom settings.
 	 */
-	public function displayed_field_type( $field ) {
-		return array(
-			$this->type => true,
-		);
-	}
+    public function displayed_field_type( $field ) {
+        return array(
+            'ff-fieldset-start' => true,
+            'fieldset-start'    => true, // backward compatibility for existing forms
+        );
+    }
 
 	/**
 	 * Add custom settings in the builder.

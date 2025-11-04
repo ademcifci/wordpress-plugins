@@ -3,7 +3,7 @@
 Plugin Name: Formidable – Simple Progress Field
 Description: Adds a lightweight “Simple Progress” field that shows “Step X of Y” for paged forms. Works with Formidable Forms Lite and Pro without modifying core.
 Version: 1.0.0
-Author: Adem Cifcioglu
+Author: Your Team
 Text Domain: formidable-simple-progress
 */
 

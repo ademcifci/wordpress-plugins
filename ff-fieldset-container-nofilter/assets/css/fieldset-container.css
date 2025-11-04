@@ -1,4 +1,4 @@
-/* FF Fieldset Container - Front-end Styles */
+/* FF Fieldset Container (No Filters) - Front-end Styles */
 
 .frm_fieldset_container {
     padding: 20px;
@@ -27,10 +27,18 @@
     overflow: hidden;
 }
 
-/* Remove default browser fieldset styling if desired */
+/* If a heading is used inside legend, remove default margins */
+.frm_fieldset_container legend h2,
+.frm_fieldset_container legend h3,
+.frm_fieldset_container legend h4,
+.frm_fieldset_container legend h5,
+.frm_fieldset_container legend h6 { margin: 0; }
+
+/* Optional minimal variant */
 .frm_fieldset_container.frm_fieldset_minimal {
     border: none;
     padding: 0;
     margin: 0;
     background: transparent;
 }
+
