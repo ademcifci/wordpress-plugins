@@ -1,123 +1,53 @@
-# 🧭 Formidable – Accessible Error Summary
+# Formidable – Accessible Error Summary
 
-[![WordPress Tested](https://img.shields.io/badge/Tested%20up%20to-6.7-blue.svg)](#)
-[![License](https://img.shields.io/badge/License-GPLv2%2B-green.svg)](https://www.gnu.org/licenses/gpl-2.0.html)
-[![Accessibility](https://img.shields.io/badge/Accessible-A11Y%20Ready-purple.svg)](#)
-[![Formidable Compatible](https://img.shields.io/badge/Formidable-Compatible-success.svg)](#)
+Accessible, keyboard-friendly error summary for Formidable Forms.
 
-**Version:** 1.2.0  
-**Requires WordPress:** 5.5+  
-**Tested up to:** 6.7  
-**License:** GPL-2.0+  
-**Tags:** Formidable Forms, Accessibility, Validation, Errors, A11y, ARIA, Screen Readers
+- Replaces the default invalid message block with a focusable, linked error summary
+- Clicking an error jumps to the related field and focuses a sensible target
+- Disables Formidable’s default “focus first error” and per-field `role=alert` to prevent double announcements
+- Works with AJAX and multi-page forms; adds optional inline error icon decoration
 
----
+## Requirements
+- WordPress
+- Formidable Forms (Lite or Pro)
 
-## 📝 Description
+## Installation
+1. Upload this folder to `wp-content/plugins/`
+2. Activate “Formidable – Accessible Error Summary” in Plugins
 
-**Formidable – Accessible Error Summary** improves accessibility and usability of [Formidable Forms](https://formidableforms.com/) validation messages by providing a single, screen-reader-friendly error summary at the top of the form.
+The plugin runs automatically on pages with Formidable forms that produce validation errors.
 
-### ✨ Features
+## Usage
+- On submission with validation errors, focus moves to a heading in the summary.
+- Each error is a link; activating it scrolls to the field container and focuses a logical control.
+- AJAX submits and multipage transitions are supported.
 
-- 🧭 **Accessible Error Summary** – Displays all validation errors at the top of the form.  
-- 🔗 **Clickable Error Links** – Each item links to the corresponding field.  
-- 🎯 **Automatic Focus Management** – Keyboard focus moves to the summary when validation fails.  
-- 🧍‍♀️ **Inline Error Icons** – Adds a `<span role="img" aria-label="Error:">` before each field-level error.  
-- 🔇 **Removes Conflicting Alerts** – Disables Formidable’s redundant live regions and “focus first error” behavior.  
-- ⚙️ **Filter-based Configuration** – Toggle CSS, icons, ARIA labels, or extend behavior in your theme.  
-- 💪 **Works with AJAX** – Observes live DOM changes and re-applies enhancements dynamically.
+## Filters
+Customize behavior via WordPress filters:
 
----
+- `ff_accessible_errors_inline_icon_enabled` (bool, default `true`)
+  - Toggle the inline error icon decoration inside per-field messages.
+  - Example: `add_filter('ff_accessible_errors_inline_icon_enabled', '__return_false');`
 
-## 📦 Installation
+- `ff_accessible_errors_inline_icon_aria_label` (string, default `'Error:'`)
+  - Change the accessible label for the inline error icon.
+  - Example:
+    ```php
+    add_filter('ff_accessible_errors_inline_icon_aria_label', function () { return 'Error message:'; });
+    ```
 
-1. Download and copy files into your `wp-content/plugins/` directory:
-2. Activate **Formidable – Accessible Error Summary** in **WordPress → Plugins**.
-3. Make sure you have **Formidable Forms** installed and active.
+- `ff_accessible_errors_load_css` (bool, default `true`)
+  - Disable the included CSS if you prefer to style errors yourself.
+  - Example: `add_filter('ff_accessible_errors_load_css', '__return_false');`
 
-That’s it — your forms now have accessible, linked error summaries and inline icons.
+## Compatibility
+- If you also use “Formidable Global A11y Enhancements”, that plugin will automatically disable its global message focusing to avoid conflicts, allowing this plugin to lead.
 
----
+## Development Notes
+- Version: 1.2.0
+- Enqueues `assets/js/ff-accessible-errors.js` and, if enabled, `assets/css/ff-accessible-errors.css`.
+- PHP entry: `formidable-accessible-errors.php`.
 
-## ⚙️ Filters and Customization
+## License
+GPL-2.0+ (see plugin header)
 
-You can customize or disable specific features via standard WordPress filters in your `functions.php` or a custom plugin.
-
-### 🔧 Disable Plugin CSS
-
-```php
-add_filter( 'ff_accessible_errors_load_css', '__return_false' );
-```
-
-### 🔧 Disable Inline Icons
-
-```php
-add_filter( 'ff_accessible_errors_inline_icon_enabled', '__return_false' );
-```
-
-### 🔧 Change the Icon’s ARIA Label
-
-```php
-add_filter( 'ff_accessible_errors_inline_icon_aria_label', function() {
-    return 'Error message:';
-});
-```
-
----
-
-## 🧠 How It Works
-
-- Hooks into `frm_validate_entry` and `frm_invalid_error_message` to capture and render all errors at once.  
-- Adds a focusable, `role="alert"` error summary for screen readers.  
-- Generates clickable links using field IDs (`frm_field_{id}_container`).  
-- Uses a small jQuery script to:
-  - Move focus to the summary,
-  - Smoothly scroll to fields when clicked,
-  - Add inline icons,
-  - Silence Formidable’s default live region to prevent duplicate announcements.
-
----
-
-## 🧩 Accessibility Highlights
-
-- Complies with **WCAG 2.1 AA** guidelines for form validation feedback.
-- Uses `role="alert"`, `aria-labelledby`, and proper focus order.
-- Error icons include `role="img"` and customizable `aria-label`.
-- Prevents multiple live regions from triggering simultaneous announcements.
-
----
-
-## 🧩 Changelog
-
-### 1.2.0
-- Added real `<span role="img">` icons for inline field errors.
-- Added new filters:
-  - `ff_accessible_errors_inline_icon_enabled`
-  - `ff_accessible_errors_inline_icon_aria_label`
-  - `ff_accessible_errors_load_css`
-- Improved JavaScript reliability for AJAX forms.
-
-### 1.1.0
-- Improved mapping of Formidable field IDs.
-- Fixed missing error links.
-- Disabled Formidable’s `focus_first_error` and inline alert roles.
-
-### 1.0.0
-- Initial release: accessible error summary, focus management, and linked error list.
-
----
-
-## 🧑‍💻 Developer Notes
-
-**Main hooks used:**
-- `frm_validate_entry` - https://formidableforms.com/knowledgebase/frm_validate_entry/
-- `frm_invalid_error_message` - https://formidableforms.com/knowledgebase/frm_invalid_error_message/
-- `frm_focus_first_error` - https://formidableforms.com/knowledgebase/frm_focus_first_error/
-- `frm_include_alert_role_on_field_errors` - https://formidableforms.com/knowledgebase/frm_include_alert_role_on_field_errors/
-
-**Files:**
-- `formidable-accessible-errors.php` – Core plugin logic and filters.  
-- `assets/js/ff-accessible-errors.js` – Handles focus, link navigation, and icons.  
-- `assets/css/ff-accessible-errors.css` – Minimal accessible styles (can be disabled).
-
----
