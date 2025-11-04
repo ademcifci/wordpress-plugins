@@ -142,6 +142,21 @@
   }
 
   $(function () {
+    // Track last submitter in case submit happens without a click event
+    var lastSubmitter = null;
+    if (CFG.multi_page_focus) {
+      $(document).on('click keydown', '.frm_next_page, .frm_prev_page', function () {
+        lastSubmitter = this;
+        try { if (window.sessionStorage) sessionStorage.setItem('fga11y_mp_focus', '1'); } catch (e) {}
+      });
+      // Set flag on submit if the submitter is Next/Prev (handles full reload flows)
+      $(document).on('submit', 'form', function (e) {
+        var submitter = (e.originalEvent && e.originalEvent.submitter) ? e.originalEvent.submitter : lastSubmitter;
+        if (submitter && ($(submitter).is('.frm_next_page, .frm_prev_page'))) {
+          try { if (window.sessionStorage) sessionStorage.setItem('fga11y_mp_focus', '1'); } catch (er) {}
+        }
+      });
+    }
     if (CFG.other_fields_fix) {
       enhanceOtherInputs(document);
     }
@@ -159,7 +174,7 @@
         }
       } catch (e) {}
 
-      // b) When clicking next/prev page buttons
+      // b) When clicking next/prev page buttons (AJAX transitions)
       $(document).on('click', '.frm_next_page, .frm_prev_page', function () {
         try { if (window.sessionStorage) sessionStorage.setItem('fga11y_mp_focus', '1'); } catch (e) {}
         // Try focusing shortly after click for ajax-based transitions
@@ -176,8 +191,17 @@
       if (CFG.global_message_focus && !CFG.has_accessible_errors) {
         focusMessages(document);
       }
+      // Focus H1 only if a Next/Prev navigation was initiated (session flag)
       if (CFG.multi_page_focus) {
-        attemptFocusH1Around($(document));
+        try {
+          if (window.sessionStorage && sessionStorage.getItem('fga11y_mp_focus') === '1') {
+            attemptFocusH1Around($(document));
+            // extra retries in case of delayed renders
+            setTimeout(function () { attemptFocusH1Around($(document)); }, 200);
+            setTimeout(function () { attemptFocusH1Around($(document)); }, 500);
+            sessionStorage.removeItem('fga11y_mp_focus');
+          }
+        } catch (e) {}
       }
     });
 
@@ -188,9 +212,29 @@
       if (CFG.global_message_focus) {
         focusMessages(document);
       }
+      // Non-AJAX multipage: if we land on a page with a visible Prev button, we are not on page 1
       if (CFG.multi_page_focus) {
-        attemptFocusH1Around($(document));
+        try {
+          if (window.sessionStorage && sessionStorage.getItem('fga11y_mp_focus') === '1') {
+            attemptFocusH1Around($(document));
+            setTimeout(function () { attemptFocusH1Around($(document)); }, 200);
+            sessionStorage.removeItem('fga11y_mp_focus');
+            return;
+          }
+        } catch (e) {}
+        var $prevBtn = $('.frm_prev_page:visible').first();
+        if ($prevBtn.length) {
+          attemptFocusH1Around($prevBtn);
+          setTimeout(function () { attemptFocusH1Around($prevBtn); }, 200);
+        }
       }
     }, 0);
+
+    // For AJAX-based multipage transitions, rely on Formidable's event when available
+    if (CFG.multi_page_focus) {
+      $(document).on('frmPageChanged', function (event, form /*, response */) {
+        attemptFocusH1Around($(form));
+      });
+    }
   });
 })(jQuery);
