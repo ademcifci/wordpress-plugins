@@ -17,3 +17,158 @@ li#fieldset-end .frmsvg {
 li#ff-fieldset-end .frmsvg use,
 li#fieldset-end .frmsvg use { display: none; }
 
+/* --- Builder grouping visuals for Fieldset Start/End --- */
+/* We add classes to builder field boxes to visually connect Start → End */
+.frm_form_builder .fff-grouped,
+.frm_wrap .fff-grouped {
+  position: relative;
+  background: #f7fbff; /* subtle tint to group area */
+  border-left: 3px solid #0073aa; /* continuous vertical guide */
+}
+
+.frm_form_builder .fff-start,
+.frm_wrap .fff-start,
+.frm_form_builder .fff-end,
+.frm_wrap .fff-end {
+  border-left: 3px solid #0073aa;
+  background: #f7fbff;
+}
+
+.frm_form_builder .fff-start .frm_fieldset_preview,
+.frm_wrap .fff-start .frm_fieldset_preview {
+  border-left: 3px solid #0073aa;
+}
+
+.frm_form_builder .fff-end .frm_fieldset_preview,
+.frm_wrap .fff-end .frm_fieldset_preview {
+  border-left: 3px solid #0073aa;
+}
+
+/* Cap the vertical guide with rounded corners on start/end previews for clarity */
+.frm_form_builder .fff-start .frm_fieldset_start_preview,
+.frm_wrap .fff-start .frm_fieldset_start_preview {
+  border-top-left-radius: 6px;
+}
+
+.frm_form_builder .fff-end .frm_fieldset_end_preview,
+.frm_wrap .fff-end .frm_fieldset_end_preview {
+  border-bottom-left-radius: 6px;
+}
+
+/* Overlay connector line inserted by JS */
+.fff-connector { pointer-events: none; }
+
+/* CSS-only grouping without :has(): use data-ftype on builder boxes */
+
+/* Emphasize Start and End markers */
+.frm_form_builder .frm_field_box[data-ftype="ff-fieldset-start"],
+.frm_wrap .frm_field_box[data-ftype="ff-fieldset-start"],
+.frm_form_builder .frm_field_box[data-type="ff-fieldset-start"],
+.frm_wrap .frm_field_box[data-type="ff-fieldset-start"],
+.frm_form_builder .frm_field_box[data-ftype="ff-fieldset-end"],
+.frm_wrap .frm_field_box[data-ftype="ff-fieldset-end"],
+.frm_form_builder .frm_field_box[data-type="ff-fieldset-end"],
+.frm_wrap .frm_field_box[data-type="ff-fieldset-end"] {
+  outline: 2px dashed #0073aa;
+  outline-offset: 2px;
+  background: #eaf6ff;
+}
+
+/* Apply grouping style to all boxes after Start */
+.frm_form_builder .frm_field_box[data-ftype="ff-fieldset-start"] ~ .frm_field_box,
+.frm_wrap .frm_field_box[data-ftype="ff-fieldset-start"] ~ .frm_field_box,
+.frm_form_builder .frm_field_box[data-type="ff-fieldset-start"] ~ .frm_field_box,
+.frm_wrap .frm_field_box[data-type="ff-fieldset-start"] ~ .frm_field_box {
+  border-left: 3px solid #0073aa;
+  background: #f7fbff;
+}
+
+/* Stop grouping after End */
+.frm_form_builder .frm_field_box[data-ftype="ff-fieldset-end"] ~ .frm_field_box,
+.frm_wrap .frm_field_box[data-ftype="ff-fieldset-end"] ~ .frm_field_box,
+.frm_form_builder .frm_field_box[data-type="ff-fieldset-end"] ~ .frm_field_box,
+.frm_wrap .frm_field_box[data-type="ff-fieldset-end"] ~ .frm_field_box {
+  border-left: none;
+  background: transparent;
+}
+
+/* Also stop grouping at Page Breaks so groups don't span pages */
+.frm_form_builder .frm_field_box[data-ftype="break"] ~ .frm_field_box,
+.frm_wrap .frm_field_box[data-ftype="break"] ~ .frm_field_box,
+.frm_form_builder .frm_field_box[data-type="break"] ~ .frm_field_box,
+.frm_wrap .frm_field_box[data-type="break"] ~ .frm_field_box {
+  border-left: none;
+  background: transparent;
+}
+
+/* Differentiate Start vs End with internal caps and badges */
+.frm_form_builder .frm_field_box[data-ftype="ff-fieldset-start"],
+.frm_wrap .frm_field_box[data-ftype="ff-fieldset-start"],
+.frm_form_builder .frm_field_box[data-type="ff-fieldset-start"],
+.frm_wrap .frm_field_box[data-type="ff-fieldset-start"] {
+  position: relative;
+  box-shadow: inset 0 4px 0 rgba(0,115,170,0.25);
+  margin-top: 10px;
+}
+.frm_form_builder .frm_field_box[data-ftype="ff-fieldset-end"],
+.frm_wrap .frm_field_box[data-ftype="ff-fieldset-end"],
+.frm_form_builder .frm_field_box[data-type="ff-fieldset-end"],
+.frm_wrap .frm_field_box[data-type="ff-fieldset-end"] {
+  position: relative;
+  box-shadow: inset 0 -4px 0 rgba(0,115,170,0.25);
+  margin-bottom: 15px;
+}
+
+/* Start badge */
+.frm_form_builder .frm_field_box[data-ftype="ff-fieldset-start"]::after,
+.frm_wrap .frm_field_box[data-ftype="ff-fieldset-start"]::after,
+.frm_form_builder .frm_field_box[data-type="ff-fieldset-start"]::after,
+.frm_wrap .frm_field_box[data-type="ff-fieldset-start"]::after {
+  content: "<fieldset>";
+  position: absolute;
+  top: -10px;
+  left: 0;
+  transform: translateY(-100%);
+  background: #0073aa;
+  color: #fff;
+  font-size: 12px;
+  line-height: 1;
+  padding: 4px 8px;
+  border-radius: 16px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.08);
+  font-weight:bold;
+}
+
+/* End badge */
+.frm_form_builder .frm_field_box[data-ftype="ff-fieldset-end"]::after,
+.frm_wrap .frm_field_box[data-ftype="ff-fieldset-end"]::after,
+.frm_form_builder .frm_field_box[data-type="ff-fieldset-end"]::after,
+.frm_wrap .frm_field_box[data-type="ff-fieldset-end"]::after {
+  content: "</fieldset>";
+  position: absolute;
+  bottom: -10px;
+  left: 0;
+  transform: translateY(100%);
+  background: #0073aa;
+  color: #fff;
+  font-size: 12px;
+  line-height: 1;
+  padding: 4px 8px;
+  border-radius: 16px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.08);
+  font-weight:bold;
+}
+
+/* Heading strip inside Start/End to reinforce boundaries without changing content */
+.frm_form_builder .frm_field_box[data-ftype="ff-fieldset-start"] .frm_primary_label,
+.frm_wrap .frm_field_box[data-ftype="ff-fieldset-start"] .frm_primary_label,
+.frm_form_builder .frm_field_box[data-type="ff-fieldset-start"] .frm_primary_label,
+.frm_wrap .frm_field_box[data-type="ff-fieldset-start"] .frm_primary_label,
+.frm_form_builder .frm_field_box[data-ftype="ff-fieldset-end"] .frm_primary_label,
+.frm_wrap .frm_field_box[data-ftype="ff-fieldset-end"] .frm_primary_label,
+.frm_form_builder .frm_field_box[data-type="ff-fieldset-end"] .frm_primary_label,
+.frm_wrap .frm_field_box[data-type="ff-fieldset-end"] .frm_primary_label {
+  border-radius: 3px;
+  padding: 6px 8px;
+  font-weight: bold;
+}

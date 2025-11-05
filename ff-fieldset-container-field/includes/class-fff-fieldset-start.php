@@ -41,13 +41,40 @@ class FFF_Fieldset_Start extends FrmFieldType {
     }
 
     protected function include_form_builder_file() {
-        return FFF_FIELDSET_DIR . 'views/builder-field-start.php';
+        // Return empty so builder_text_field() can inject our preview
+        // into Formidable's standard builder wrapper for reliable ordering.
+        return '';
     }
 
     public function show_primary_options( $args ) {
         $field = $args['field'];
         include FFF_FIELDSET_DIR . 'views/builder-settings-start.php';
         parent::show_primary_options( $args );
+    }
+
+    /**
+     * Render the builder preview inside the standard wrapper so drag/drop
+     * order is tracked consistently (parity with Duet field approach).
+     */
+    protected function builder_text_field( $name = '' ) {
+        $preview_html = '';
+        try {
+            ob_start();
+            $field = is_array( $this->field ) ? $this->field : (array) $this->field;
+            include FFF_FIELDSET_DIR . 'views/builder-field-start.php';
+            $preview_html = (string) ob_get_clean();
+        } catch ( \Throwable $e ) {
+            if ( function_exists( 'ob_get_level' ) && ob_get_level() ) { ob_end_clean(); }
+            $preview_html = '';
+        }
+
+        if ( is_callable( 'FrmProFieldsHelper::builder_page_prepend' ) ) {
+            $html = \FrmProFieldsHelper::builder_page_prepend( $this->field );
+            if ( strpos( $html, '[input]' ) !== false ) {
+                return str_replace( '[input]', $preview_html, $html );
+            }
+        }
+        return parent::builder_text_field( $name );
     }
 
     public function validate( $args ) {

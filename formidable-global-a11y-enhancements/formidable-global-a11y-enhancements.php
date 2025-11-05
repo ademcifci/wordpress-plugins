@@ -32,17 +32,17 @@ class Formidable_Global_A11y_Enhancements {
         );
 
         $settings = $this->get_settings();
-        // If the Accessible Error Summary plugin is active, disable our global message focus to avoid conflicts.
+        // Detect Accessible Errors. We no longer disable message focus entirely;
+        // JS will defer ONLY error focusing to Accessible Errors, while still
+        // handling success-message focus when enabled.
         $accessible_errors_active = class_exists( 'FF_Accessible_Error_Summary' );
-        if ( $accessible_errors_active ) {
-            $settings['global_message_focus'] = 0;
-        }
         wp_localize_script(
             'formidable-global-a11y-enhancements',
             'ff_globa11y',
             [
                 'other_fields_fix'      => (bool) $settings['other_fields_fix'],
                 'global_message_focus'  => (bool) $settings['global_message_focus'],
+                'success_message_focus' => (bool) $settings['success_message_focus'],
                 'multi_page_focus'      => (bool) $settings['multi_page_focus'],
                 'has_accessible_errors' => (bool) $accessible_errors_active,
             ]
@@ -86,14 +86,27 @@ class Formidable_Global_A11y_Enhancements {
 
         add_settings_field(
             'global_message_focus',
-            'Global message focus',
+            'Global error message focus',
             function () {
                 $settings   = $this->get_settings();
                 $checked    = ! empty( $settings['global_message_focus'] ) ? 'checked' : '';
                 $ae_active  = class_exists( 'FF_Accessible_Error_Summary' );
                 $disabled   = $ae_active ? ' disabled="disabled" aria-disabled="true" ' : '';
                 echo '<label><input type="checkbox" ' . $disabled . ' name="' . esc_attr( self::OPTION_KEY ) . '[global_message_focus]" value="1" ' . $checked . '> Enable</label>';
-                echo '<p class="description">After submission, move focus to the global error summary or success message.' . ( $ae_active ? ' <strong>Note:</strong> Auto-disabled because Formidable Accessible Error Summary is active.' : '' ) . '</p>';
+                echo '<p class="description">Focus the error summary after submission when Accessible Error Summary is not active.' . ( $ae_active ? ' <strong>Note:</strong> Disabled because Accessible Error Summary is active and will handle error focusing.' : '' ) . '</p>';
+            },
+            self::OPTION_KEY,
+            'fga11y_main'
+        );
+
+        add_settings_field(
+            'success_message_focus',
+            'Success message focus',
+            function () {
+                $settings = $this->get_settings();
+                $checked  = ! empty( $settings['success_message_focus'] ) ? 'checked' : '';
+                echo '<label><input type="checkbox" name="' . esc_attr( self::OPTION_KEY ) . '[success_message_focus]" value="1" ' . $checked . '> Enable</label>';
+                echo '<p class="description">After a successful submission, move focus to the success confirmation message.</p>';
             },
             self::OPTION_KEY,
             'fga11y_main'
@@ -139,6 +152,7 @@ class Formidable_Global_A11y_Enhancements {
         $out = [
             'other_fields_fix'     => empty( $in['other_fields_fix'] ) ? 0 : 1,
             'global_message_focus' => array_key_exists( 'global_message_focus', $in ) ? ( empty( $in['global_message_focus'] ) ? 0 : 1 ) : ( isset( $current['global_message_focus'] ) ? (int) $current['global_message_focus'] : (int) $defaults['global_message_focus'] ),
+            'success_message_focus' => array_key_exists( 'success_message_focus', $in ) ? ( empty( $in['success_message_focus'] ) ? 0 : 1 ) : ( isset( $current['success_message_focus'] ) ? (int) $current['success_message_focus'] : (int) $defaults['success_message_focus'] ),
             'multi_page_focus'     => array_key_exists( 'multi_page_focus', $in ) ? ( empty( $in['multi_page_focus'] ) ? 0 : 1 ) : ( isset( $current['multi_page_focus'] ) ? (int) $current['multi_page_focus'] : (int) $defaults['multi_page_focus'] ),
         ];
 
@@ -153,6 +167,8 @@ class Formidable_Global_A11y_Enhancements {
             'global_message_focus' => 0,
             // Other fields fix ON by default
             'other_fields_fix'     => 1,
+            // Success message focus ON by default
+            'success_message_focus'=> 1,
             // Multi‑page focus ON by default
             'multi_page_focus'     => 1,
         ];

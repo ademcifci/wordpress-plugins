@@ -52,7 +52,57 @@ add_action( 'plugins_loaded', function () {
     add_action( 'admin_enqueue_scripts', function(){
         wp_enqueue_style( 'frm-sp-admin', FRM_SP_PLUGIN_URL . 'assets/css/admin.css', array(), FRM_SP_VERSION );
     } );
-}, 20 );
+    }, 20 );
+
+    // Exclude Simple Progress from Entries list table columns.
+    add_filter( 'frm_fields_in_entries_list_table', function( $fields, $args ){
+        if ( empty( $fields ) ) { return $fields; }
+        $out = array();
+        foreach ( (array) $fields as $f ) {
+            $type = is_object( $f ) ? ( isset( $f->type ) ? $f->type : '' ) : ( isset( $f['type'] ) ? $f['type'] : '' );
+            if ( $type === 'simple_progress' ) { continue; }
+            $out[] = $f;
+        }
+        return $out;
+    }, 10, 2 );
+
+    // Save settings from builder for Simple Progress field.
+    add_filter( 'frm_update_field_options', function( $field_options, $field, $values ){
+        $type = is_object( $field ) ? ( $field->type ?? '' ) : ( $field['type'] ?? '' );
+        if ( 'simple_progress' !== $type ) {
+            return $field_options;
+        }
+        $field_id = is_object( $field ) ? ( $field->id ?? '' ) : ( $field['id'] ?? '' );
+        if ( '' === (string) $field_id || empty( $values['field_options'] ) || ! is_array( $values['field_options'] ) ) {
+            return $field_options;
+        }
+
+        $posted = $values['field_options'];
+
+        // Text: step label
+        $key = 'step_label_' . $field_id;
+        if ( array_key_exists( $key, $posted ) ) {
+            $field_options['step_label'] = (string) $posted[ $key ];
+        }
+
+        // Checkbox: auto inject
+        $key = 'sp_auto_inject_' . $field_id;
+        $field_options['sp_auto_inject'] = isset( $posted[ $key ] ) && ( '1' == $posted[ $key ] || 1 === $posted[ $key ] ) ? '1' : '0';
+
+        // Select: inject position
+        $key = 'sp_inject_position_' . $field_id;
+        if ( array_key_exists( $key, $posted ) ) {
+            $allowed = array( '', 'above_title', 'before_submit', 'after_submit' );
+            $val = (string) $posted[ $key ];
+            $field_options['sp_inject_position'] = in_array( $val, $allowed, true ) ? $val : '';
+        }
+
+        // Checkbox: live region
+        $key = 'sp_live_region_' . $field_id;
+        $field_options['sp_live_region'] = isset( $posted[ $key ] ) && ( '1' == $posted[ $key ] || 1 === $posted[ $key ] ) ? '1' : '0';
+
+        return $field_options;
+    }, 10, 3 );
 
 // Auto-inject front-end output if a Simple Progress field is configured for it.
 function frm_sp_maybe_output_progress_badge( $atts ) {
