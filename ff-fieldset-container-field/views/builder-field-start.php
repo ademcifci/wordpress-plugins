@@ -20,34 +20,41 @@
 </div>
 
 <style>
+/* Make fieldset previews stand out clearly inside the builder wrapper */
 .frm_fieldset_preview {
-	padding: 15px;
-	background: #f0f8ff;
-	border: 2px dashed #4a90e2;
-	border-radius: 4px;
-	margin: 10px 0;
+  padding: 16px;
+  background: #eaf6ff; /* higher contrast than before */
+  border: 2px dashed #0073aa;
+  border-radius: 4px;
+  margin: 10px 0;
 }
 .frm_fieldset_start_preview {
-	border-bottom: 2px solid #4a90e2;
-	border-radius: 4px 4px 0 0;
+  border-bottom: 3px solid #0073aa;
+  border-radius: 4px 4px 0 0;
+  box-shadow: inset 0 6px 0 rgba(0,115,170,0.08);
 }
 .frm_fieldset_icon {
-	font-size: 24px;
-	float: left;
-	margin-right: 10px;
+  font-size: 28px;
+  line-height: 1;
+  color: #0073aa;
+  float: left;
+  margin-right: 10px;
 }
 .frm_fieldset_info {
-	overflow: hidden;
+  overflow: hidden;
+}
+.frm_fieldset_info > strong {
+  color: #0073aa;
 }
 .frm_fieldset_legend_preview {
-	margin-top: 5px;
-	color: #666;
+  margin-top: 5px;
+  color: #444;
 }
 .frm_fieldset_instruction {
-	margin-top: 8px;
-	font-size: 12px;
-	color: #666;
-	font-style: italic;
+  margin-top: 8px;
+  font-size: 12px;
+  color: #333;
+  font-style: italic;
 }
 </style>
 

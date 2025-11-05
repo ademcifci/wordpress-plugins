@@ -10,6 +10,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 class Frm_Simple_Progress_Field extends FrmFieldType {
 
     protected $type = 'simple_progress';
+    // Keep this as an input-type field in the builder so the wrapper and
+    // preview render correctly. No input is rendered in front_field_input(),
+    // so nothing is stored on submit.
     protected $has_for_label = false;
     // Disable the Formidable HTML wrapper for this field so we
     // control output entirely via front_field_input(). This also
@@ -43,7 +46,10 @@ class Frm_Simple_Progress_Field extends FrmFieldType {
     }
 
     protected function include_form_builder_file() {
-        return FRM_SP_PLUGIN_DIR . 'views/field-simple-progress.php';
+        // Use the builder wrapper approach (like Duet Date field) so
+        // drag/drop order and placement are preserved reliably.
+        // We'll return '' here and output our preview via builder_text_field().
+        return '';
     }
 
     /**
@@ -56,6 +62,37 @@ class Frm_Simple_Progress_Field extends FrmFieldType {
         $field = $args['field'];
         include FRM_SP_PLUGIN_DIR . 'views/settings-simple-progress.php';
         parent::show_primary_options( $args );
+    }
+
+    /**
+     * Ensure the builder preview renders inside the standard Formidable
+     * builder wrapper so field order is tracked and saved consistently.
+     */
+    protected function builder_text_field( $name = '' ) {
+        // Build our preview markup by including the existing builder view.
+        $preview_html = '';
+        try {
+            ob_start();
+            // The builder view expects $field
+            $field = is_array( $this->field ) ? $this->field : (array) $this->field;
+            include FRM_SP_PLUGIN_DIR . 'views/field-simple-progress.php';
+            $preview_html = (string) ob_get_clean();
+        } catch ( \Throwable $e ) {
+            if ( function_exists( 'ob_get_level' ) && ob_get_level() ) { ob_end_clean(); }
+            $preview_html = '';
+        }
+
+        // If Pro helper exists, use it to get the wrapper and inject our preview.
+        if ( is_callable( 'FrmProFieldsHelper::builder_page_prepend' ) ) {
+            $html = \FrmProFieldsHelper::builder_page_prepend( $this->field );
+            if ( strpos( $html, '[input]' ) !== false ) {
+                return str_replace( '[input]', $preview_html, $html );
+            }
+        }
+
+        // Fallback to parent which returns a safe default wrapper/input.
+        // This keeps drag/drop working even if our custom preview isn't injected.
+        return parent::builder_text_field( $name );
     }
 
     public function front_field_input( $args, $shortcode_atts ) {

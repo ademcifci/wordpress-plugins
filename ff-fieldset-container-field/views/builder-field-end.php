@@ -14,10 +14,34 @@
 </div>
 
 <style>
+/* Match Start style but clearly denote the closing marker */
+.frm_fieldset_preview {
+  padding: 16px;
+  background: #f7fbff;
+  border: 2px dashed #0073aa;
+  border-radius: 4px;
+  margin: 10px 0;
+}
 .frm_fieldset_end_preview {
-	border-top: 2px solid #4a90e2;
-	border-radius: 0 0 4px 4px;
-	background: #f8f8f8;
+  border-top: 3px solid #0073aa;
+  border-radius: 0 0 4px 4px;
+  background: #f7fbff;
+  box-shadow: inset 0 -6px 0 rgba(0,115,170,0.08);
+}
+.frm_fieldset_icon {
+  font-size: 28px;
+  line-height: 1;
+  color: #0073aa;
+  float: left;
+  margin-right: 10px;
+}
+.frm_fieldset_info { overflow: hidden; }
+.frm_fieldset_info > strong { color: #0073aa; }
+.frm_fieldset_instruction {
+  margin-top: 8px;
+  font-size: 12px;
+  color: #333;
+  font-style: italic;
 }
 </style>
 

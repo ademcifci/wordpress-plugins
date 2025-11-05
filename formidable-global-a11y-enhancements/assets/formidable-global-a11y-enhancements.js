@@ -16,6 +16,7 @@
   var CFG = window.ff_globa11y || {
     other_fields_fix: true,
     global_message_focus: false,
+    success_message_focus: true,
     multi_page_focus: true,
     has_accessible_errors: false,
     debug_tabindex: false
@@ -66,34 +67,37 @@
   // 2) Focus management for global errors and success messages
   function focusMessages(context) {
     var $ctx = context ? $(context) : $(document);
-    if (CFG.has_accessible_errors) return; // let Accessible Errors plugin handle focus
 
-    // Prefer accessible error summary if present
-    var $ffSummary = $ctx.find('.ff-global-errors').first();
-    if ($ffSummary.length) {
-      var $head = $ffSummary.find('[role="heading"], h2, h3').first();
-      if ($head.length) {
-        $head.attr('tabindex', '-1');
-        try { trackTabindex($head, 'ff-global-errors heading'); } catch (e) {}
-        safeFocus($head);
+    // If Accessible Errors is active, skip error focusing but still handle success.
+    if (!CFG.has_accessible_errors && CFG.global_message_focus) {
+      // Prefer accessible error summary if present
+      var $ffSummary = $ctx.find('.ff-global-errors').first();
+      if ($ffSummary.length) {
+        var $head = $ffSummary.find('[role="heading"], h2, h3').first();
+        if ($head.length) {
+          $head.attr('tabindex', '-1');
+          try { trackTabindex($head, 'ff-global-errors heading'); } catch (e) {}
+          safeFocus($head);
+          return;
+        }
+        $ffSummary.attr('tabindex', '-1');
+        try { trackTabindex($ffSummary, 'ff-global-errors container'); } catch (e) {}
+        safeFocus($ffSummary);
         return;
       }
-      $ffSummary.attr('tabindex', '-1');
-      try { trackTabindex($ffSummary, 'ff-global-errors container'); } catch (e) {}
-      safeFocus($ffSummary);
-      return;
-    }
 
-    // Legacy/global errors fallback
-    var $errorHeading = $ctx.find('.global-errors h2').first();
-    if ($errorHeading.length) {
-      $errorHeading.attr('tabindex', '-1');
-      try { trackTabindex($errorHeading, 'legacy global-errors h2'); } catch (e) {}
-      safeFocus($errorHeading);
-      return;
+      // Legacy/global errors fallback
+      var $errorHeading = $ctx.find('.global-errors h2').first();
+      if ($errorHeading.length) {
+        $errorHeading.attr('tabindex', '-1');
+        try { trackTabindex($errorHeading, 'legacy global-errors h2'); } catch (e) {}
+        safeFocus($errorHeading);
+        return;
+      }
     }
 
     // Success messages
+    if (!CFG.success_message_focus) return;
     var $msg = $ctx.find('.frm_message').first();
     if ($msg.length) {
       $msg.attr('tabindex', '-1');
@@ -160,7 +164,7 @@
     if (CFG.other_fields_fix) {
       enhanceOtherInputs(document);
     }
-    if (CFG.global_message_focus && !CFG.has_accessible_errors) {
+    if (CFG.global_message_focus || CFG.success_message_focus) {
       focusMessages(document);
     }
 
@@ -188,7 +192,7 @@
       if (CFG.other_fields_fix) {
         enhanceOtherInputs(document);
       }
-      if (CFG.global_message_focus && !CFG.has_accessible_errors) {
+      if (CFG.global_message_focus || CFG.success_message_focus) {
         focusMessages(document);
       }
       // Focus H1 only if a Next/Prev navigation was initiated (session flag)
@@ -209,7 +213,7 @@
       if (CFG.other_fields_fix) {
         enhanceOtherInputs(document);
       }
-      if (CFG.global_message_focus) {
+      if (CFG.global_message_focus || CFG.success_message_focus) {
         focusMessages(document);
       }
       // Non-AJAX multipage: if we land on a page with a visible Prev button, we are not on page 1
@@ -238,3 +242,6 @@
     }
   });
 })(jQuery);
+
+
+

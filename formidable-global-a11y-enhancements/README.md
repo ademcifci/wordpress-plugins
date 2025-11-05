@@ -28,10 +28,13 @@ If “Formidable – Accessible Error Summary” is active, this plugin auto-dis
 - Optional debugging of focusable tabindex can be enabled with `?ff_globa11y_debug=1`
 
 ## Development Notes
-- Version: 1.1.0
+- Version: 1.1.1
 - Enqueues `assets/formidable-global-a11y-enhancements.js`
 - PHP entry: `formidable-global-a11y-enhancements.php`
 
+## Changelog
+- 1.1.1
+  - Focus H1 only after explicit multi-page navigation (Next/Prev) or when a session flag indicates navigation; avoid focusing H1 on first load or generic AJAX completions.
+
 ## License
 GPL-2.0+ (see plugin header)
-
