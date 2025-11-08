@@ -18,6 +18,7 @@
     global_message_focus: false,
     success_message_focus: true,
     multi_page_focus: true,
+    multi_page_focus_level: 1,
     has_accessible_errors: false,
     debug_tabindex: false
   };
@@ -110,12 +111,15 @@
 
   // 3) Multi-page: focus H1 in the current page/form after navigation
   function focusFirstHeadingIn($root) {
-    var $h1 = $root && $root.length ? $root.find('h1:visible').first() : $();
-    if (!$h1 || !$h1.length) {
-      $h1 = $('h1:visible').first();
+    var level = parseInt(CFG.multi_page_focus_level, 10);
+    if (!(level >= 1 && level <= 6)) level = 1;
+    var selector = 'h' + level + ':visible';
+    var $h = $root && $root.length ? $root.find(selector).first() : $();
+    if (!$h || !$h.length) {
+      $h = $(selector).first();
     }
-    if ($h1.length) {
-      safeFocus($h1);
+    if ($h.length) {
+      safeFocus($h);
       return true;
     }
     return false;

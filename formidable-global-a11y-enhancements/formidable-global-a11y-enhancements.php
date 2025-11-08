@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Formidable Global A11y Enhancements
  * Description: Accessibility improvements for Formidable Forms outside of file uploads: focus management for global messages, cleanup for "Other" text inputs, and multi‑page focus. Admin settings to toggle features.
- * Version: 1.1.0
+ * Version: 1.2.0
  * Author: Adem Cifcioglu
  * License: GPL-2.0+
  */
@@ -21,7 +21,7 @@ class Formidable_Global_A11y_Enhancements {
     }
 
     public function enqueue_assets() {
-        $ver = '1.1.0';
+        $ver = '1.2.0';
 
         wp_enqueue_script(
             'formidable-global-a11y-enhancements',
@@ -44,6 +44,7 @@ class Formidable_Global_A11y_Enhancements {
                 'global_message_focus'  => (bool) $settings['global_message_focus'],
                 'success_message_focus' => (bool) $settings['success_message_focus'],
                 'multi_page_focus'      => (bool) $settings['multi_page_focus'],
+                'multi_page_focus_level'=> isset( $settings['multi_page_focus_level'] ) ? (int) $settings['multi_page_focus_level'] : 1,
                 'has_accessible_errors' => (bool) $accessible_errors_active,
             ]
         );
@@ -52,7 +53,7 @@ class Formidable_Global_A11y_Enhancements {
     public function register_settings_page() {
         add_options_page(
             'Formidable A11y Enhancements',
-            'Formidable A11y',
+            'FF A11y Enhancements',
             'manage_options',
             'formidable-global-a11y-enhancements',
             [ $this, 'render_settings_page' ]
@@ -73,12 +74,12 @@ class Formidable_Global_A11y_Enhancements {
 
         add_settings_field(
             'other_fields_fix',
-            'Other fields cleanup',
+            'General cleanup',
             function () {
                 $settings = $this->get_settings();
                 $checked  = ! empty( $settings['other_fields_fix'] ) ? 'checked' : '';
                 echo '<label><input type="checkbox" name="' . esc_attr( self::OPTION_KEY ) . '[other_fields_fix]" value="1" ' . $checked . '> Enable</label>';
-                echo '<p class="description">Hide duplicate screen-reader-only labels for "Other" text inputs, move that text into aria-label, and remove alert roles from inline error elements.</p>';
+                echo "<p class=\"description\">Hide duplicate screen-reader-only labels for \"Other\" text inputs, move that text into aria-label, and remove alert roles from inline error elements. These fixes probably aren't needed any more due to changes in Formidable core, but will do no harm </p>";
             },
             self::OPTION_KEY,
             'fga11y_main'
@@ -113,13 +114,32 @@ class Formidable_Global_A11y_Enhancements {
         );
 
         add_settings_field(
+            'multi_page_focus_level',
+            'Multi-page heading level',
+            function () {
+                $settings = $this->get_settings();
+                $current  = isset( $settings['multi_page_focus_level'] ) ? (int) $settings['multi_page_focus_level'] : 1;
+                $name     = esc_attr( self::OPTION_KEY ) . '[multi_page_focus_level]';
+                echo '<select name="' . $name . '">';
+                for ( $i = 1; $i <= 6; $i++ ) {
+                    $sel = selected( $current, $i, false );
+                    echo '<option value="' . $i . '" ' . $sel . '>H' . $i . '</option>';
+                }
+                echo '</select>';
+                echo '<p class="description">Choose which heading level (H1–H6) receives focus after multi-page navigation. Defaults to H1.</p>';
+            },
+            self::OPTION_KEY,
+            'fga11y_main'
+        );
+
+        add_settings_field(
             'multi_page_focus',
-            'Multi‑page H1 focus',
+            'Multi-page focus',
             function () {
                 $settings = $this->get_settings();
                 $checked  = ! empty( $settings['multi_page_focus'] ) ? 'checked' : '';
                 echo '<label><input type="checkbox" name="' . esc_attr( self::OPTION_KEY ) . '[multi_page_focus]" value="1" ' . $checked . '> Enable</label>';
-                echo '<p class="description">On Next/Previous in multi-page forms, move focus to the first visible H1 on the page. If a global error appears, focus the error summary instead.</p>';
+                echo '<p class="description">On Next/Previous in multi-page forms, move focus to the first visible heading on the page. If a global error appears, focus the error summary instead.</p>';
             },
             self::OPTION_KEY,
             'fga11y_main'
@@ -154,6 +174,14 @@ class Formidable_Global_A11y_Enhancements {
             'global_message_focus' => array_key_exists( 'global_message_focus', $in ) ? ( empty( $in['global_message_focus'] ) ? 0 : 1 ) : ( isset( $current['global_message_focus'] ) ? (int) $current['global_message_focus'] : (int) $defaults['global_message_focus'] ),
             'success_message_focus' => array_key_exists( 'success_message_focus', $in ) ? ( empty( $in['success_message_focus'] ) ? 0 : 1 ) : ( isset( $current['success_message_focus'] ) ? (int) $current['success_message_focus'] : (int) $defaults['success_message_focus'] ),
             'multi_page_focus'     => array_key_exists( 'multi_page_focus', $in ) ? ( empty( $in['multi_page_focus'] ) ? 0 : 1 ) : ( isset( $current['multi_page_focus'] ) ? (int) $current['multi_page_focus'] : (int) $defaults['multi_page_focus'] ),
+            'multi_page_focus_level' => ( function() use ( $in, $current, $defaults ) {
+                if ( array_key_exists( 'multi_page_focus_level', $in ) ) {
+                    $val = (int) $in['multi_page_focus_level'];
+                    if ( $val < 1 || $val > 6 ) { $val = (int) $defaults['multi_page_focus_level']; }
+                    return $val;
+                }
+                return isset( $current['multi_page_focus_level'] ) ? (int) $current['multi_page_focus_level'] : (int) $defaults['multi_page_focus_level'];
+            } )(),
         ];
 
         // Ensure all keys exist, fall back to defaults if somehow missing
@@ -171,6 +199,8 @@ class Formidable_Global_A11y_Enhancements {
             'success_message_focus'=> 1,
             // Multi‑page focus ON by default
             'multi_page_focus'     => 1,
+            // Default multi-page focus heading level = H1
+            'multi_page_focus_level' => 1,
         ];
     }
 
@@ -194,6 +224,7 @@ register_activation_hook( __FILE__, function () {
             'global_message_focus' => 0,
             'other_fields_fix'     => 1,
             'multi_page_focus'     => 1,
+            'multi_page_focus_level' => 1,
         ] );
     }
 } );
