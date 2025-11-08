@@ -4,7 +4,7 @@ Accessibility improvements for Formidable Forms outside of file uploads, with ad
 
 - “Other” inputs cleanup: hides duplicate screen-reader labels, moves text into `aria-label`, removes redundant alert roles
 - Global message focus: on submit, focuses the error summary or success message
-- Multi-page focus: on next/previous, focuses the first visible H1; prefers error summary when present
+- Multi-page focus: on next/previous, focuses the first visible heading (configurable H1–H6); prefers error summary when present
 
 ## Requirements
 - WordPress
@@ -18,7 +18,7 @@ Accessibility improvements for Formidable Forms outside of file uploads, with ad
 Navigate to `Settings → Formidable A11y` to toggle features:
 - Other fields cleanup (default: ON)
 - Global message focus (default: OFF)
-- Multi-page H1 focus (default: ON)
+- Multi-page heading focus (default: ON) and selectable heading level (default: H1)
 
 If “Formidable – Accessible Error Summary” is active, this plugin auto-disables its own global message focusing to avoid conflicts.
 
@@ -28,13 +28,13 @@ If “Formidable – Accessible Error Summary” is active, this plugin auto-dis
 - Optional debugging of focusable tabindex can be enabled with `?ff_globa11y_debug=1`
 
 ## Development Notes
-- Version: 1.1.1
+- Version: 1.2.0
 - Enqueues `assets/formidable-global-a11y-enhancements.js`
 - PHP entry: `formidable-global-a11y-enhancements.php`
 
 ## Changelog
-- 1.1.1
-  - Focus H1 only after explicit multi-page navigation (Next/Prev) or when a session flag indicates navigation; avoid focusing H1 on first load or generic AJAX completions.
+- 1.2.0
+  - Add setting to choose heading level (H1–H6) for multi-page focus; H1 remains default. Keep existing behavior and accessibility priorities.
 
 ## License
 GPL-2.0+ (see plugin header)

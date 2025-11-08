@@ -1,0 +1,11 @@
+.fbcs-collapsed > .frm_inner_field_container .frm-collapse-section .frm_icon_font,
+.fbcs-collapsed > .frm_inner_field_container .fbcs-toggle {
+  transform: rotate(-90deg);
+}
+
+.fbcs-toggle {
+  display: inline-block;
+  margin-right: 6px;
+  text-decoration: none;
+}
+

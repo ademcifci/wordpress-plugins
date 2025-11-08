@@ -410,6 +410,18 @@
   $(function () {
     enhanceUploads(document);
 
+    // Formidable AJAX lifecycle hooks: re-scan the form context after updates
+    $(document).on('frmFormErrors', function (_event, form /*, response */) {
+      // Validation errors returned via AJAX; form content was updated
+      enhanceUploads(form);
+    });
+
+    $(document).on('frmPageChanged', function (_event, form /*, response */) {
+      // Multi-page AJAX navigation; page content replaced
+      enhanceUploads(form);
+    });
+
+    // Fallback for jQuery-based AJAX flows on the site
     $(document).on('ajaxComplete', function () {
       enhanceUploads(document);
     });
@@ -417,6 +429,27 @@
     setTimeout(function () {
       enhanceUploads(document);
     }, 0);
+
+    // Robust fallback for non-jQuery injections (fetch, framework renders, etc.)
+    if (window.MutationObserver && document.body) {
+      var bodyObserver = new MutationObserver(function (mutations) {
+        for (var i = 0; i < mutations.length; i++) {
+          var m = mutations[i];
+          if (m.type === 'childList' && m.addedNodes && m.addedNodes.length) {
+            for (var j = 0; j < m.addedNodes.length; j++) {
+              var node = m.addedNodes[j];
+              if (node && node.nodeType === 1) {
+                // If this node is or contains a dropzone, enhance within this subtree
+                if (node.matches && (node.matches('.frm_dropzone, [id$="_dropzone"]') || node.querySelector('.frm_dropzone, [id$="_dropzone"]'))) {
+                  enhanceUploads(node);
+                }
+              }
+            }
+          }
+        }
+      });
+      try { bodyObserver.observe(document.body, { childList: true, subtree: true }); } catch (e) { /* noop */ }
+    }
   });
 
 })(jQuery);
