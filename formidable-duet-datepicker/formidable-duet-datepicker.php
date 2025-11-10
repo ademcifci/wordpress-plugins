@@ -200,6 +200,12 @@ class Formidable_Duet_Date_Picker_Plugin {
                 <label for="duet_locale_<?php echo esc_attr( $field_id ); ?>" class="frm_left_label"><?php esc_html_e( 'Locale', 'formidable' ); ?></label>
                 <input type="text" id="duet_locale_<?php echo esc_attr( $field_id ); ?>" name="field_options[duet_locale_<?php echo esc_attr( $field_id ); ?>]" value="<?php echo esc_attr( $locale ); ?>" placeholder="en, fr, de..." />
             </div>
+            <?php $format = isset( $field['duet_format'] ) ? (string) $field['duet_format'] : ''; ?>
+            <div class="frm6 frm_form_field">
+                <label for="duet_format_<?php echo esc_attr( $field_id ); ?>" class="frm_left_label"><?php esc_html_e( 'Display/Input Format', 'formidable' ); ?></label>
+                <input type="text" id="duet_format_<?php echo esc_attr( $field_id ); ?>" name="field_options[duet_format_<?php echo esc_attr( $field_id ); ?>]" value="<?php echo esc_attr( $format ); ?>" placeholder="YYYY-MM-DD or DD-MM-YYYY|YYYY" />
+                <p class="howto"><?php esc_html_e( 'Supported tokens: YYYY, MM, DD. If a user enters a year-only value (YYYY), it is stored as YYYY-01-01 to keep full ISO dates.', 'formidable' ); ?></p>
+            </div>
         </div>
 
         <div class="frm_form_field">
@@ -238,6 +244,7 @@ class Formidable_Duet_Date_Picker_Plugin {
         $values['field_options']['duet_min']               = isset( $posted[ 'duet_min_' . $field_id ] ) ? sanitize_text_field( $posted[ 'duet_min_' . $field_id ] ) : '';
         $values['field_options']['duet_max']               = isset( $posted[ 'duet_max_' . $field_id ] ) ? sanitize_text_field( $posted[ 'duet_max_' . $field_id ] ) : '';
         $values['field_options']['duet_locale']            = isset( $posted[ 'duet_locale_' . $field_id ] ) ? sanitize_text_field( $posted[ 'duet_locale_' . $field_id ] ) : '';
+        $values['field_options']['duet_format']            = isset( $posted[ 'duet_format_' . $field_id ] ) ? sanitize_text_field( $posted[ 'duet_format_' . $field_id ] ) : '';
         // Disabled dates -> array of lines matching YYYY-MM-DD (keep as-is; JS will normalize)
         if ( isset( $posted[ 'duet_disabled_dates_' . $field_id ] ) ) {
             $lines = preg_split( '/\r\n|\r|\n/', (string) $posted[ 'duet_disabled_dates_' . $field_id ] );

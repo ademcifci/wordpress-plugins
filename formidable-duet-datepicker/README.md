@@ -14,7 +14,7 @@ How it works
 Scope and current limitations
 - Single date fields: supported.
 - Date ranges:
-  - Single-input ranges (`.frm_date_range`): supported via two Duet pickers (start/end) that sync back to the single input as `YYYY-MM-DD to YYYY-MM-DD`.
+- Single-input ranges (`.frm_date_range`): supported via two Duet pickers (start/end) that sync back to the single input as `YYYY-MM-DD to YYYY-MM-DD`.
   - Two-field ranges (separate "Start Date"/"End Date" fields): each field uses Duet individually; hard constraints between them can be added in a follow-up if needed.
 - Inline datepickers: currently render as dropdown calendars; inline always-visible calendar can be added if required.
 
@@ -23,6 +23,14 @@ Install
 2. Activate "Formidable Duet Date Picker".
 3. Go to Formidable > Global Settings and check "Duet Date Picker".
 4. Date fields will use Duet on the front end and admin entries screens.
+
+## Custom Date Formats
+
+- You can customize the displayed and typed date format per field.
+- In the field options, set "Display/Input Format" (e.g. `DD-MM-YYYY`, `MM/DD/YYYY`, or multiple like `DD-MM-YYYY|YYYY`).
+- Supported tokens: `YYYY`, `MM`, `DD`. Separators like `-`, `/`, or `.` are respected.
+- If `YYYY` is used alone, it is interpreted as January 1st of that year for storage. All saved values are ISO `YYYY-MM-DD`.
+- Regardless of display, submitted values remain ISO `YYYY-MM-DD` to keep compatibility with Formidable.
 
 Opt-out
 - Disable via the Global Settings checkbox. If you need per-field opt-out, we can add a data-attribute based skip on request.

@@ -76,6 +76,9 @@
     const locale = ds.duetLocale || null;
     if (locale) props.locale = locale;
 
+    // Optional custom display/input format(s), e.g. "DD-MM-YYYY" or "DD-MM-YYYY|YYYY".
+    if (ds.duetFormat) props.format = ds.duetFormat;
+
     // Min/Max support absolute date or relative offsets.
     if (ds.duetMin) props.min = normalizeDateOrOffset(ds.duetMin);
     if (ds.duetMax) props.max = normalizeDateOrOffset(ds.duetMax);
@@ -117,6 +120,85 @@
       }
     } catch (e) {}
     return undefined;
+  }
+
+  // Build a Duet dateAdapter supporting custom parse/format patterns.
+  function buildDateAdapter(formatStr) {
+    const formats = (formatStr || '').split('|').map((s) => s.trim()).filter(Boolean);
+    const primary = formats[0] || 'YYYY-MM-DD';
+
+    function pad2(n) { return String(n).padStart(2, '0'); }
+
+    function formatISOTo(fmt, iso) {
+      if (!iso || !/^\d{4}-\d{2}-\d{2}$/.test(iso)) return '';
+      const [y, m, d] = iso.split('-');
+      if (fmt === 'YYYY') return y;
+      return fmt
+        .replace(/YYYY/g, y)
+        .replace(/MM/g, m)
+        .replace(/DD/g, d);
+    }
+
+    function parseWith(fmt, value) {
+      if (!fmt || !value) return undefined;
+      const v = String(value).trim();
+      if (fmt === 'YYYY') {
+        const m = v.match(/^(\d{4})$/);
+        if (m) return `${m[1]}-01-01`;
+        return undefined;
+      }
+      // Escape regex special chars in fmt, then replace tokens with capture groups
+      const esc = fmt.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const rxStr = esc
+        .replace(/YYYY/g, '(\\d{4})')
+        .replace(/MM/g, '(\\d{1,2})')
+        .replace(/DD/g, '(\\d{1,2})');
+      const rx = new RegExp('^' + rxStr + '$');
+      const m = v.match(rx);
+      if (!m) return undefined;
+      // Determine token order
+      const order = [];
+      let i = 0;
+      while (i < fmt.length) {
+        if (fmt.startsWith('YYYY', i)) { order.push('Y'); i += 4; continue; }
+        if (fmt.startsWith('MM', i)) { order.push('M'); i += 2; continue; }
+        if (fmt.startsWith('DD', i)) { order.push('D'); i += 2; continue; }
+        i += 1; // skip separator
+      }
+      const parts = { Y: '', M: '', D: '' };
+      let gi = 1;
+      for (const t of order) {
+        if (gi >= m.length) break;
+        parts[t] = m[gi++];
+      }
+      const year = parseInt(parts.Y, 10);
+      const month = parseInt(parts.M, 10);
+      const day = parseInt(parts.D, 10);
+      if (!year || isNaN(year)) return undefined;
+      const mm = isNaN(month) ? 1 : Math.min(Math.max(month, 1), 12);
+      const dd = isNaN(day) ? 1 : Math.min(Math.max(day, 1), 31);
+      return `${year}-${pad2(mm)}-${pad2(dd)}`;
+    }
+
+    function parseValue(value) {
+      // Try configured formats first
+      for (const f of formats) {
+        const iso = parseWith(f, value);
+        if (iso) return iso;
+      }
+      // Fallback: native normalization (ISO or Date(...))
+      return normalizeDate(value);
+    }
+
+    return {
+      parse(value) {
+        const iso = parseValue(value);
+        return iso && /^\d{4}-\d{2}-\d{2}$/.test(iso) ? iso : undefined;
+      },
+      format(iso) {
+        return formatISOTo(primary, iso);
+      },
+    };
   }
 
   function normalizeDateOrOffset(input) {
@@ -170,6 +252,18 @@
 
     // Deep localization (month/day names, labels) using Intl if possible.
     duet.localization = buildLocalization(props.locale, props.firstDayOfWeek);
+    // If a custom format is provided, reflect it in the placeholder.
+    if (props.format) {
+      try {
+        const firstFmt = String(props.format).split('|').map((s) => s.trim()).filter(Boolean)[0];
+        if (firstFmt) {
+          duet.localization = Object.assign({}, duet.localization, { placeholder: firstFmt });
+        }
+      } catch (e) {}
+    }
+
+    // Provide a dateAdapter to support custom parse/format on user input.
+    duet.dateAdapter = buildDateAdapter(props.format || '');
 
     // Keep the original input for submission but hide it from interaction.
     input.classList.add('frm-duet-hidden');
@@ -192,7 +286,7 @@
       if (val) duet.value = val;
     }
 
-    // On change, copy value back to original input and fire change events.
+    // On change, copy full ISO value back to original input and fire change events.
     duet.addEventListener('duetChange', function (e) {
       const val = (e && e.detail && e.detail.value) || '';
       if (input.value !== val) {
