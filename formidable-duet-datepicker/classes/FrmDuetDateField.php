@@ -84,6 +84,11 @@ class FrmDuetDateField extends FrmFieldType {
             $attributes['data-duet-days-disabled'] = esc_attr( implode( ',', array_map( 'absint' , $this->field['duet_days_disabled'] ) ) );
         }
 
+        // Optional: Custom display/input format(s), e.g. "DD-MM-YYYY" or "DD-MM-YYYY|YYYY".
+        if ( ! empty( $this->field['duet_format'] ) && is_string( $this->field['duet_format'] ) ) {
+            $attributes['data-duet-format'] = esc_attr( $this->field['duet_format'] );
+        }
+
         return '<input' . FrmAppHelper::array_to_html_params( $attributes ) . $input_html . ' />';
     }
 

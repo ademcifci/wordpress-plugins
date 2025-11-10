@@ -50,6 +50,25 @@
     } catch (e) {}
   }
 
+  // Intent tracking for multi-page focus (covers no-sessionStorage cases)
+  var mpIntent = false;
+  function setMpIntent() {
+    mpIntent = true;
+    try { if (window.sessionStorage) sessionStorage.setItem('fga11y_mp_focus', '1'); } catch (e) {}
+  }
+  function consumeMpIntent() {
+    var had = !!mpIntent;
+    mpIntent = false;
+    var hadSess = false;
+    try {
+      if (window.sessionStorage && sessionStorage.getItem('fga11y_mp_focus') === '1') {
+        hadSess = true;
+        sessionStorage.removeItem('fga11y_mp_focus');
+      }
+    } catch (e) {}
+    return had || hadSess;
+  }
+
   // 1) "Other" inputs: hide duplicate SR labels, move text into aria-label, tidy error roles
   function enhanceOtherInputs(context) {
     var $ctx = context ? $(context) : $(document);
@@ -155,13 +174,13 @@
     if (CFG.multi_page_focus) {
       $(document).on('click keydown', '.frm_next_page, .frm_prev_page', function () {
         lastSubmitter = this;
-        try { if (window.sessionStorage) sessionStorage.setItem('fga11y_mp_focus', '1'); } catch (e) {}
+        setMpIntent();
       });
       // Set flag on submit if the submitter is Next/Prev (handles full reload flows)
       $(document).on('submit', 'form', function (e) {
         var submitter = (e.originalEvent && e.originalEvent.submitter) ? e.originalEvent.submitter : lastSubmitter;
         if (submitter && ($(submitter).is('.frm_next_page, .frm_prev_page'))) {
-          try { if (window.sessionStorage) sessionStorage.setItem('fga11y_mp_focus', '1'); } catch (er) {}
+          setMpIntent();
         }
       });
     }
@@ -176,19 +195,15 @@
     if (CFG.multi_page_focus) {
       // a) If we previously navigated pages via full reload, focus now
       try {
-        if (window.sessionStorage && sessionStorage.getItem('fga11y_mp_focus') === '1') {
+        if (consumeMpIntent()) {
           attemptFocusH1Around($(document));
-          sessionStorage.removeItem('fga11y_mp_focus');
         }
       } catch (e) {}
 
       // b) When clicking next/prev page buttons (AJAX transitions)
+      // Set the intent flag but do not pre-focus; wait for content change.
       $(document).on('click', '.frm_next_page, .frm_prev_page', function () {
-        try { if (window.sessionStorage) sessionStorage.setItem('fga11y_mp_focus', '1'); } catch (e) {}
-        // Try focusing shortly after click for ajax-based transitions
-        attemptFocusH1Around($(this));
-        setTimeout(function () { attemptFocusH1Around($(this)); }.bind(this), 250);
-        setTimeout(function () { attemptFocusH1Around($(this)); }.bind(this), 600);
+        setMpIntent();
       });
     }
 
@@ -201,15 +216,12 @@
       }
       // Focus H1 only if a Next/Prev navigation was initiated (session flag)
       if (CFG.multi_page_focus) {
-        try {
-          if (window.sessionStorage && sessionStorage.getItem('fga11y_mp_focus') === '1') {
-            attemptFocusH1Around($(document));
-            // extra retries in case of delayed renders
-            setTimeout(function () { attemptFocusH1Around($(document)); }, 200);
-            setTimeout(function () { attemptFocusH1Around($(document)); }, 500);
-            sessionStorage.removeItem('fga11y_mp_focus');
-          }
-        } catch (e) {}
+        if (consumeMpIntent()) {
+          attemptFocusH1Around($(document));
+          // extra retries in case of delayed renders
+          setTimeout(function () { attemptFocusH1Around($(document)); }, 200);
+          setTimeout(function () { attemptFocusH1Around($(document)); }, 500);
+        }
       }
     });
 
@@ -222,14 +234,11 @@
       }
       // Non-AJAX multipage: if we land on a page with a visible Prev button, we are not on page 1
       if (CFG.multi_page_focus) {
-        try {
-          if (window.sessionStorage && sessionStorage.getItem('fga11y_mp_focus') === '1') {
-            attemptFocusH1Around($(document));
-            setTimeout(function () { attemptFocusH1Around($(document)); }, 200);
-            sessionStorage.removeItem('fga11y_mp_focus');
-            return;
-          }
-        } catch (e) {}
+        if (consumeMpIntent()) {
+          attemptFocusH1Around($(document));
+          setTimeout(function () { attemptFocusH1Around($(document)); }, 200);
+          return;
+        }
         var $prevBtn = $('.frm_prev_page:visible').first();
         if ($prevBtn.length) {
           attemptFocusH1Around($prevBtn);
@@ -241,7 +250,14 @@
     // For AJAX-based multipage transitions, rely on Formidable's event when available
     if (CFG.multi_page_focus) {
       $(document).on('frmPageChanged', function (event, form /*, response */) {
-        attemptFocusH1Around($(form));
+        // Prefer handling when an intent exists, but still attempt as a fallback
+        if (consumeMpIntent()) {
+          attemptFocusH1Around($(form));
+          setTimeout(function () { attemptFocusH1Around($(form)); }, 200);
+        } else {
+          // Fallback in case intent couldn't be stored (no sessionStorage, keyboard submit, etc.)
+          attemptFocusH1Around($(form));
+        }
       });
     }
   });

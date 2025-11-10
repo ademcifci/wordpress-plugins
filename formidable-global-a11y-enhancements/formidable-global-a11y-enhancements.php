@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Formidable Global A11y Enhancements
  * Description: Accessibility improvements for Formidable Forms outside of file uploads: focus management for global messages, cleanup for "Other" text inputs, and multi‑page focus. Admin settings to toggle features.
- * Version: 1.2.0
+ * Version: 1.2.4
  * Author: Adem Cifcioglu
  * License: GPL-2.0+
  */
@@ -21,7 +21,7 @@ class Formidable_Global_A11y_Enhancements {
     }
 
     public function enqueue_assets() {
-        $ver = '1.2.0';
+        $ver = '1.2.4';
 
         wp_enqueue_script(
             'formidable-global-a11y-enhancements',
@@ -170,10 +170,11 @@ class Formidable_Global_A11y_Enhancements {
         $in = is_array( $input ) ? $input : [];
 
         $out = [
-            'other_fields_fix'     => empty( $in['other_fields_fix'] ) ? 0 : 1,
-            'global_message_focus' => array_key_exists( 'global_message_focus', $in ) ? ( empty( $in['global_message_focus'] ) ? 0 : 1 ) : ( isset( $current['global_message_focus'] ) ? (int) $current['global_message_focus'] : (int) $defaults['global_message_focus'] ),
-            'success_message_focus' => array_key_exists( 'success_message_focus', $in ) ? ( empty( $in['success_message_focus'] ) ? 0 : 1 ) : ( isset( $current['success_message_focus'] ) ? (int) $current['success_message_focus'] : (int) $defaults['success_message_focus'] ),
-            'multi_page_focus'     => array_key_exists( 'multi_page_focus', $in ) ? ( empty( $in['multi_page_focus'] ) ? 0 : 1 ) : ( isset( $current['multi_page_focus'] ) ? (int) $current['multi_page_focus'] : (int) $defaults['multi_page_focus'] ),
+            // For checkboxes, absence means unchecked (0)
+            'other_fields_fix'      => empty( $in['other_fields_fix'] ) ? 0 : 1,
+            'global_message_focus'  => empty( $in['global_message_focus'] ) ? 0 : 1,
+            'success_message_focus' => empty( $in['success_message_focus'] ) ? 0 : 1,
+            'multi_page_focus'      => empty( $in['multi_page_focus'] ) ? 0 : 1,
             'multi_page_focus_level' => ( function() use ( $in, $current, $defaults ) {
                 if ( array_key_exists( 'multi_page_focus_level', $in ) ) {
                     $val = (int) $in['multi_page_focus_level'];
