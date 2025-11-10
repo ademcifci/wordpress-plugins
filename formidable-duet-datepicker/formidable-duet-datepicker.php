@@ -1,8 +1,8 @@
 <?php
 /*
 Plugin Name: Formidable Duet Date Picker
-Description: Replaces Formidable Forms date fields with the Duet Date Picker without modifying core files.
-Author: Preso
+Description: Adds Formidable Forms date field using the Duet Date Picker (https://github.com/duetds/date-picker).
+Author: Adem Cifcioglu
 Version: 0.1.0
 */
 
