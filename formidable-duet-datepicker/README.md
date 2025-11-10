@@ -1,39 +1,53 @@
 Formidable Duet Date Picker
 ===========================
 
-Standalone plugin that replaces Formidable Forms date fields with the Duet Date Picker web component, without modifying Formidable core.
+Adds a new Formidable field type “Duet Date” powered by the Duet Design System date picker. It does not modify Formidable core; assets load only when a Duet Date field is present.
 
-How it works
-- Adds a "Duet Date Picker" checkbox under Formidable > Global Settings. Nothing runs until enabled.
-- Uses Duet CDN assets (ESM + nomodule) to ensure all internal imports resolve.
-- Intercepts Formidable default Flatpickr/jQuery init only for supported fields once enabled.
-- Uses the `__frmDatepicker` configuration to map min/max, default date, first-day-of-week, disabled dates.
-- Deep localization: builds month/day names from `Intl.DateTimeFormat` based on the field locale (fallbacks to site lang).
-- Keeps the original input for submission; Duet updates it on change and triggers change events.
+Overview
+- New builder field type: “Duet Date”.
+- Original input is kept (hidden) for submission; Duet syncs its value and triggers change events.
+- Uses Duet CDN assets (module + nomodule) and builds localization via the browser `Intl` APIs.
+- Works on initial load and on AJAX‑inserted forms (MutationObserver).
 
-Scope and current limitations
-- Single date fields: supported.
-- Date ranges:
-- Single-input ranges (`.frm_date_range`): supported via two Duet pickers (start/end) that sync back to the single input as `YYYY-MM-DD to YYYY-MM-DD`.
-  - Two-field ranges (separate "Start Date"/"End Date" fields): each field uses Duet individually; hard constraints between them can be added in a follow-up if needed.
-- Inline datepickers: currently render as dropdown calendars; inline always-visible calendar can be added if required.
+Features
+- Min/Max dates: accepts ISO `YYYY-MM-DD` or relative offsets like `+3days`, `+2months`, `-1year`.
+- Disabled dates: one per line in ISO (`YYYY-MM-DD`).
+- Disabled weekdays: checkboxes for Sun..Sat.
+- Locale and first day of week.
+- Custom input/display formats per field: tokens `YYYY`, `MM`, `DD` (separators such as `-`, `/`, `.` allowed). Multiple formats can be allowed by separating with `|`.
+- Year‑only UI option: shows placeholder `YYYY` and hides the calendar button (typing only). The stored value remains full ISO (mapped to `YYYY-01-01`).
+- Two‑field ranges: link an End field to a Start field (client‑side min/max linking).
+- Accessibility: label clicks focus the visible Duet input; programmatic focus on the hidden input is forwarded to Duet for error links.
+
+Field Options (Builder)
+- Minimum Date: `YYYY-MM-DD` or relative offset (example: `+1year`).
+- Maximum Date: `YYYY-MM-DD` or relative offset.
+- Locale: e.g., `en`, `fr`, `de`.
+- Display/Input Format: e.g., `DD-MM-YYYY`, `MM/DD/YYYY`, or multi‑format like `DD-MM-YYYY|YYYY`.
+- Year only: shows `YYYY`, disables the calendar button; stores as `YYYY-01-01`.
+- Disabled Days of the Week: checkboxes 0–6.
+- Disabled Dates (one per line): ISO `YYYY-MM-DD`.
+
+Validation & Storage
+- Storage: always ISO `YYYY-MM-DD` for compatibility with Formidable and calculations.
+- Server‑side validation: enforces ISO format, valid calendar dates, and Min/Max (including relative offsets). Out‑of‑range submissions are rejected with the field’s “invalid” message.
+- Client‑side: Duet value is checked against Min/Max and `aria-invalid` is set when out of range (theme‑dependent styling).
+
+Compatibility
+- AJAX forms: supported (listens for added nodes and initializes automatically).
+- Label focus and error links: label `for` points to the visible Duet input; any programmatic focus on the hidden input is forwarded to Duet.
+
+Known Limitations
+- Single‑input date ranges (one input with “start to end”) are not implemented; use two fields (Start + End).
+- No custom error text for “before min/after max” — the generic invalid message is used.
+- Advanced recurring disable rules (e.g., “every 2nd Tuesday”) are not implemented; use explicit dates or weekday disabling.
+- Date‑only: no time picker mode.
+- Server‑side cross‑field validation for Start/End is not enforced; only the End field receives dynamic client‑side linking to Start. A server rule can be added if required.
 
 Install
 1. Copy `formidable-duet-datepicker` into `wp-content/plugins`.
-2. Activate "Formidable Duet Date Picker".
-3. Go to Formidable > Global Settings and check "Duet Date Picker".
-4. Date fields will use Duet on the front end and admin entries screens.
-
-## Custom Date Formats
-
-- You can customize the displayed and typed date format per field.
-- In the field options, set "Display/Input Format" (e.g. `DD-MM-YYYY`, `MM/DD/YYYY`, or multiple like `DD-MM-YYYY|YYYY`).
-- Supported tokens: `YYYY`, `MM`, `DD`. Separators like `-`, `/`, or `.` are respected.
-- If `YYYY` is used alone, it is interpreted as January 1st of that year for storage. All saved values are ISO `YYYY-MM-DD`.
-- Regardless of display, submitted values remain ISO `YYYY-MM-DD` to keep compatibility with Formidable.
-
-Opt-out
-- Disable via the Global Settings checkbox. If you need per-field opt-out, we can add a data-attribute based skip on request.
+2. Activate “Formidable Duet Date Picker”.
+3. Add the “Duet Date” field to your form and configure options as needed.
 
 Notes
-- This plugin does not touch Formidable core. It relies on DOM interception and Formidable’s exported `__frmDatepicker` config to mirror behaviour.
+- This plugin avoids editing Formidable core. All integration happens by registering a new field type and attaching Duet next to its input.

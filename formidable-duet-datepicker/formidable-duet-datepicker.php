@@ -208,6 +208,15 @@ class Formidable_Duet_Date_Picker_Plugin {
             </div>
         </div>
 
+        <?php $year_only = ! empty( $field['duet_year_only'] ) && $field['duet_year_only'] === '1'; ?>
+        <div class="frm_form_field">
+            <label class="frm_left_label">
+                <input type="checkbox" name="field_options[duet_year_only_<?php echo esc_attr( $field_id ); ?>]" value="1" <?php checked( $year_only ); ?> />
+                <?php esc_html_e( 'Year only (show YYYY and disable calendar)', 'formidable' ); ?>
+            </label>
+            <p class="howto"><?php esc_html_e( 'Users can enter a 4-digit year. The stored value remains a full ISO date (YYYY-01-01) so validations and min/max still work.', 'formidable' ); ?></p>
+        </div>
+
         <div class="frm_form_field">
             <label class="frm_left_label"><?php esc_html_e( 'Disabled Days of the Week', 'formidable' ); ?></label>
             <div class="frm_inline_box">
@@ -245,6 +254,7 @@ class Formidable_Duet_Date_Picker_Plugin {
         $values['field_options']['duet_max']               = isset( $posted[ 'duet_max_' . $field_id ] ) ? sanitize_text_field( $posted[ 'duet_max_' . $field_id ] ) : '';
         $values['field_options']['duet_locale']            = isset( $posted[ 'duet_locale_' . $field_id ] ) ? sanitize_text_field( $posted[ 'duet_locale_' . $field_id ] ) : '';
         $values['field_options']['duet_format']            = isset( $posted[ 'duet_format_' . $field_id ] ) ? sanitize_text_field( $posted[ 'duet_format_' . $field_id ] ) : '';
+        $values['field_options']['duet_year_only']         = isset( $posted[ 'duet_year_only_' . $field_id ] ) ? '1' : '0';
         // Disabled dates -> array of lines matching YYYY-MM-DD (keep as-is; JS will normalize)
         if ( isset( $posted[ 'duet_disabled_dates_' . $field_id ] ) ) {
             $lines = preg_split( '/\r\n|\r|\n/', (string) $posted[ 'duet_disabled_dates_' . $field_id ] );
