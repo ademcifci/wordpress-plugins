@@ -89,6 +89,11 @@ class FrmDuetDateField extends FrmFieldType {
             $attributes['data-duet-format'] = esc_attr( $this->field['duet_format'] );
         }
 
+        // Optional: Year-only UI (placeholder YYYY, disables calendar button).
+        if ( ! empty( $this->field['duet_year_only'] ) && $this->field['duet_year_only'] === '1' ) {
+            $attributes['data-duet-year-only'] = '1';
+        }
+
         return '<input' . FrmAppHelper::array_to_html_params( $attributes ) . $input_html . ' />';
     }
 
@@ -108,6 +113,54 @@ class FrmDuetDateField extends FrmFieldType {
         $parts = explode( '-', $value );
         if ( count( $parts ) !== 3 || ! checkdate( (int) $parts[1], (int) $parts[2], (int) $parts[0] ) ) {
             $errors[ 'field' . $args['id'] ] = FrmFieldsHelper::get_error_msg( $this->field, 'invalid' );
+        }
+
+        // Enforce min/max if configured in builder options (supports absolute YYYY-MM-DD or relative offsets like +1year)
+        $min_raw = (string) FrmField::get_option( $this->field, 'duet_min' );
+        $max_raw = (string) FrmField::get_option( $this->field, 'duet_max' );
+
+        $normalize_offset = function( $str ) {
+            $str = trim( strtolower( (string) $str ) );
+            if ( $str === '' ) { return ''; }
+            if ( preg_match( '/^\d{4}-\d{2}-\d{2}$/', $str ) ) {
+                return $str;
+            }
+            if ( preg_match( '/^([+-])(\d+)(day|days|month|months|year|years)$/', $str, $m ) ) {
+                $sign  = $m[1] === '-' ? -1 : 1;
+                $count = (int) $m[2];
+                $unit  = $m[3];
+                try {
+                    $dt = new DateTime( 'today' );
+                    if ( strpos( $unit, 'day' ) === 0 ) {
+                        $interval = new DateInterval( 'P' . $count . 'D' );
+                    } elseif ( strpos( $unit, 'month' ) === 0 ) {
+                        $interval = new DateInterval( 'P' . $count . 'M' );
+                    } else { // year/years
+                        $interval = new DateInterval( 'P' . $count . 'Y' );
+                    }
+                    if ( $sign < 0 ) {
+                        $dt->sub( $interval );
+                    } else {
+                        $dt->add( $interval );
+                    }
+                    return $dt->format( 'Y-m-d' );
+                } catch ( Exception $e ) {
+                    return '';
+                }
+            }
+            return '';
+        };
+
+        $min_iso = $normalize_offset( $min_raw );
+        $max_iso = $normalize_offset( $max_raw );
+        // Compare as strings since ISO lexicographically sorts correctly
+        if ( $min_iso && strcmp( $value, $min_iso ) < 0 ) {
+            $errors[ 'field' . $args['id'] ] = FrmFieldsHelper::get_error_msg( $this->field, 'invalid' );
+            return $errors;
+        }
+        if ( $max_iso && strcmp( $value, $max_iso ) > 0 ) {
+            $errors[ 'field' . $args['id'] ] = FrmFieldsHelper::get_error_msg( $this->field, 'invalid' );
+            return $errors;
         }
         return $errors;
     }

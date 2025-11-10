@@ -104,6 +104,9 @@
       }
     }
 
+    // Year-only UI toggle
+    if (ds.duetYearOnly === '1') props.yearOnly = true;
+
     return props;
   }
 
@@ -144,7 +147,7 @@
       const v = String(value).trim();
       if (fmt === 'YYYY') {
         const m = v.match(/^(\d{4})$/);
-        if (m) return `${m[1]}-01-01`;
+        if (m) return new Date(parseInt(m[1], 10), 0, 1);
         return undefined;
       }
       // Escape regex special chars in fmt, then replace tokens with capture groups
@@ -177,26 +180,37 @@
       if (!year || isNaN(year)) return undefined;
       const mm = isNaN(month) ? 1 : Math.min(Math.max(month, 1), 12);
       const dd = isNaN(day) ? 1 : Math.min(Math.max(day, 1), 31);
-      return `${year}-${pad2(mm)}-${pad2(dd)}`;
+      return new Date(year, mm - 1, dd);
     }
 
     function parseValue(value) {
-      // Try configured formats first
+      // Only parse when a configured format fully matches.
+      // This avoids "autofilling" a date when user has typed only a character or partial input.
       for (const f of formats) {
-        const iso = parseWith(f, value);
-        if (iso) return iso;
+        const dt = parseWith(f, value);
+        if (dt instanceof Date && !isNaN(dt)) return dt;
       }
-      // Fallback: native normalization (ISO or Date(...))
-      return normalizeDate(value);
+      return undefined;
     }
 
     return {
       parse(value) {
-        const iso = parseValue(value);
-        return iso && /^\d{4}-\d{2}-\d{2}$/.test(iso) ? iso : undefined;
+        const d = parseValue(value);
+        return d instanceof Date && !isNaN(d) ? d : undefined;
       },
-      format(iso) {
-        return formatISOTo(primary, iso);
+      format(input) {
+        // Duet may pass ISO string or a Date. Normalize to ISO first.
+        let iso = undefined;
+        try {
+          if (input instanceof Date) {
+            iso = formatDate(input);
+          } else if (typeof input === 'number') {
+            iso = formatDate(new Date(input));
+          } else if (typeof input === 'string') {
+            iso = normalizeDate(input);
+          }
+        } catch (e) {}
+        return formatISOTo(primary, iso || '');
       },
     };
   }
@@ -240,10 +254,15 @@
     // Build Duet element
     const duet = document.createElement('duet-date-picker');
     duet.className = 'frm-duet-picker';
+    // Keep unique identifier for Duet (not reusing input id to avoid duplicate ids)
     duet.identifier = (input.id || 'frm_duet_date') + '__duet';
 
     // Map props: from dataset for Duet field, or from legacy settings if passed
     const props = Object.assign({}, getPropsFromDataset(input), mapConfigToDuetProps(settings || {}));
+    // Force year-only format if requested
+    if (props.yearOnly) {
+      props.format = 'YYYY';
+    }
     if (props.value) duet.value = props.value;
     if (props.min) duet.min = props.min;
     if (props.max) duet.max = props.max;
@@ -285,10 +304,31 @@
       const val = normalizeDate(input.value);
       if (val) duet.value = val;
     }
+    // Apply initial validity
+    try { applyValidity(duet.value || ''); } catch (e) {}
 
-    // On change, copy full ISO value back to original input and fire change events.
+    // Helper: range validity using ISO lexical compare
+    function outOfRange(iso) {
+      if (!iso || !/^\d{4}-\d{2}-\d{2}$/.test(iso)) return false;
+      const min = props.min || null;
+      const max = props.max || null;
+      if (min && iso < min) return true;
+      if (max && iso > max) return true;
+      return false;
+    }
+
+    function applyValidity(iso) {
+      try {
+        const invalid = outOfRange(iso);
+        if (invalid) duet.setAttribute('aria-invalid', 'true');
+        else duet.removeAttribute('aria-invalid');
+      } catch (e) {}
+    }
+
+    // On change, copy full ISO value back to original input, update validity, and fire change events.
     duet.addEventListener('duetChange', function (e) {
       const val = (e && e.detail && e.detail.value) || '';
+      applyValidity(val);
       if (input.value !== val) {
         input.value = val;
         triggerChange(input);
@@ -299,9 +339,64 @@
     input.parentNode.insertBefore(duet, input.nextSibling);
     input.dataset.duetAttached = '1';
 
+    // If year-only, hide/disable the calendar toggle once hydrated
+    if (props.yearOnly) {
+      (function disableToggleWhenReady(el) {
+        let tries = 0;
+        function attempt() {
+          tries++;
+          try {
+            const btn = (el.shadowRoot && el.shadowRoot.querySelector('.duet-date__toggle')) || el.querySelector('.duet-date__toggle');
+            if (btn) {
+              btn.setAttribute('disabled', 'true');
+              btn.setAttribute('aria-hidden', 'true');
+              btn.tabIndex = -1;
+              btn.style.display = 'none';
+              return; // done
+            }
+          } catch (e) {}
+          if (tries < 20) setTimeout(attempt, 100);
+        }
+        attempt();
+        // Prevent any programmatic attempts to open the calendar
+        el.addEventListener('duetOpen', function (ev) {
+          try { ev.preventDefault(); } catch (e) {}
+        });
+      })(duet);
+    }
+
     // Register for range linking between two separate fields
     duetRegistry.inputToDuet.set(input, duet);
     tryLinkSeparateRange(input);
+
+    // Accessibility & label behavior: clicking the label should focus the Duet field.
+    try {
+      if (input.id) {
+        const label = document.querySelector('label[for="' + CSS.escape(input.id) + '"]');
+        if (label) {
+          // Point the label to Duet's visible input id so default click focuses it
+          if (duet.identifier) {
+            label.setAttribute('for', duet.identifier);
+          }
+          // Remove any redundant aria-labelledby to avoid double announcement
+          if (duet.hasAttribute('aria-labelledby')) {
+            duet.removeAttribute('aria-labelledby');
+          }
+        }
+      }
+
+      // Some error/scroll plugins programmatically focus the original hidden input.
+      // If that happens, forward focus to the Duet input instead.
+      input.addEventListener('focus', function () {
+        setTimeout(function () {
+          try {
+            if (typeof duet.setFocus === 'function') duet.setFocus();
+            else duet.focus();
+          } catch (e) {}
+        }, 0);
+      });
+      // No additional forwarding needed; label 'for' now targets Duet input.
+    } catch (e) {}
   }
 
   /**
