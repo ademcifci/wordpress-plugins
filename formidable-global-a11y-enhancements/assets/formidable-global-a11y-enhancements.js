@@ -20,6 +20,8 @@
     multi_page_focus: true,
     multi_page_focus_level: 1,
     has_accessible_errors: false,
+    remove_alert_role_on_field_errors: false,
+    remove_choice_error_alert_role: false,
     debug_tabindex: false
   };
   CFG.has_accessible_errors = !!CFG.has_accessible_errors;
@@ -69,7 +71,7 @@
     return had || hadSess;
   }
 
-  // 1) "Other" inputs: hide duplicate SR labels, move text into aria-label, tidy error roles
+  // 1) "Other" inputs: hide duplicate SR labels, move text into aria-label
   function enhanceOtherInputs(context) {
     var $ctx = context ? $(context) : $(document);
     $ctx.find('.frm_other_input').each(function () {
@@ -77,11 +79,23 @@
       var $srLabel = $input.siblings('label.frm_screen_reader').first();
       if ($srLabel.length) {
         $srLabel.css('display', 'none');
-        var txt = ($srLabel.html() || '').trim();
+        var txt = ($srLabel.text() || '').trim();
         if (txt) $input.attr('aria-label', txt);
       }
     });
-    $ctx.find('.frm_error_style[role]').removeAttr('role');
+  }
+
+  // Remove role=alert from inline field errors when site opts out via filter
+  function adjustInlineErrorRoles(context) {
+    var REMOVE_ALERT = !!(CFG.remove_alert_role_on_field_errors || CFG.remove_choice_error_alert_role);
+    if (!REMOVE_ALERT) return;
+    var $ctx = context ? $(context) : $(document);
+    $ctx.find('.frm_error_style[role="alert"], .frm_error[role="alert"], .frm_inline_error[role="alert"]').each(function () {
+      var $err = $(this);
+      if ($err.attr('role') === 'alert') {
+        $err.removeAttr('role');
+      }
+    });
   }
 
   // 2) Focus management for global errors and success messages
@@ -187,9 +201,8 @@
     if (CFG.other_fields_fix) {
       enhanceOtherInputs(document);
     }
-    if (CFG.global_message_focus || CFG.success_message_focus) {
-      focusMessages(document);
-    }
+    adjustInlineErrorRoles(document);
+    
 
     // Multi-page: handle following scenarios
     if (CFG.multi_page_focus) {
@@ -208,12 +221,21 @@
     }
 
     $(document).on('ajaxComplete', function () {
+      // Scope to Formidable-related AJAX requests only
+      var args = arguments;
+      try {
+        var settings = args && args.length >= 3 ? args[2] : null;
+        var url = settings && settings.url ? String(settings.url) : '';
+        var dataStr = settings && settings.data != null ? String(settings.data) : '';
+        var isFormidableAjax = /admin-ajax\.php|formidable|\bfrm\b|frm_|frm\-/.test(url) || /formidable|\bfrm\b|frm_|frm\-/.test(dataStr);
+        if (!isFormidableAjax) {
+          return; // ignore unrelated AJAX completions
+        }
+      } catch (e) {}
       if (CFG.other_fields_fix) {
         enhanceOtherInputs(document);
       }
-      if (CFG.global_message_focus || CFG.success_message_focus) {
-        focusMessages(document);
-      }
+      adjustInlineErrorRoles(document);
       // Focus H1 only if a Next/Prev navigation was initiated (session flag)
       if (CFG.multi_page_focus) {
         if (consumeMpIntent()) {
@@ -229,9 +251,8 @@
       if (CFG.other_fields_fix) {
         enhanceOtherInputs(document);
       }
-      if (CFG.global_message_focus || CFG.success_message_focus) {
-        focusMessages(document);
-      }
+      adjustInlineErrorRoles(document);
+
       // Non-AJAX multipage: if we land on a page with a visible Prev button, we are not on page 1
       if (CFG.multi_page_focus) {
         if (consumeMpIntent()) {
@@ -262,6 +283,8 @@
     }
   });
 })(jQuery);
+
+
 
 
 
