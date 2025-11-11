@@ -2,16 +2,21 @@
 
 A collection of custom accessibility and UX plugins that enhance Formidable Forms without modifying core. Each plugin is self‑contained and can be installed independently.
 
+These are all a work in progress. While each plugin has been tested, and hasn't broken anything, you use at your own risk knowing they are in development.
+
+Feel free to raise any issues you find, or contribute to fixes.
+
+Note: These plugins are not affiliated with or endorsed by Formidable Forms or Strategy11.
+
 ## Contents
 - formidable-global-a11y-enhancements — Global frontend accessibility helpers: message focus, multipage focus, “Other” input cleanup, and aria-describedby injection for choice inputs. Respects the Formidable alert‑role filter.
 - formidable-accessible-errors — Accessible error summary that focuses on submit and links errors to fields; disables first‑error focus and per‑field alert roles.
 - formidable-dropzone-a11y-enhancements — A11y fixes for Dropzone upload fields: focus management, better announcements, “Other” label cleanup.
-- formidable-duet-datepicker — Adds a Duet Date Picker–powered field type; loads assets only when needed; integrates with builder and entries.
+- formidable-duet-datepicker — Adds a Duet Date Picker–powered field type; loads assets only when needed; integrates with builder and entries. (this is probably the most complex of the bunch, and while it works, I'm sure there are problems I haven't found yet...)
 - ff-fieldset-container-field — Unified Fieldset Start/End field types for grouping form content; builder support and i18n.
 - formidable-radio-checkbox-fieldset — Adds semantic fieldset/legend around radio/checkbox groups via builder template override, with options for legends and ARIA roles.
 - formidable-builder-collapsed-sections — Collapses native Formidable Sections in the builder UI for easier navigation.
 - formidable-simple-progress — Lightweight “Step X of Y” progress field for multipage forms; optional auto‑inject.
-- formidable, formidable-pro, formidable-dates — Vendor plugins included for local development/testing only (copyright Strategy11). Do not redistribute.
 
 ## Requirements
 - WordPress with Formidable Forms (Lite or Pro) enabled.
