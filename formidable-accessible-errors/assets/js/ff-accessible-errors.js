@@ -64,11 +64,13 @@
   /**
    * Handle initial load (non-AJAX).
    */
-  $(function () {
+ $(function () {
     focusErrorSummaryIfPresent(document);
     bindErrorLinkNavigation(document);
 	muteDefaultFormidableAlert(document);
 	decorateInlineErrors(document);
+    observeFormidableContainers(document);
+    bootstrapFormObserver();
 	
 	// When an AJAX submit returns validation errors
 	$(document).on('frmFormErrors', function (event, form, response) {
@@ -77,6 +79,7 @@
 	  bindErrorLinkNavigation(form);
 	  muteDefaultFormidableAlert($(form).parent());
 	  focusErrorSummaryIfPresent(form);
+      observeFormidableContainers(form);
 	});
 
 	// Multipage forms with AJAX page loads:
@@ -84,6 +87,7 @@
 	  decorateInlineErrors(form);
 	  bindErrorLinkNavigation(form);
 	  muteDefaultFormidableAlert($(form).parent()); // or muteDefaultFormidableAlert(form);
+      observeFormidableContainers(form);
 	});
 
 	
@@ -92,30 +96,87 @@
   /**
    * Handle AJAX forms:
    * Formidable re-renders portions of the form after an AJAX submit with errors.
-   * We observe the form containers for insertion of ".ff-global-errors".
+   * Observe only the relevant Formidable wrappers for insertion of ".ff-global-errors".
    */
-  var observer = new MutationObserver(function (mutationsList) {
+  function processAddedNode($node) {
+    if (!$node || !$node.length) {
+      return;
+    }
+
+    if ($node.is('.ff-global-errors') || $node.find('.ff-global-errors').length) {
+      focusErrorSummaryIfPresent($node);
+      bindErrorLinkNavigation($node);
+    }
+
+    muteDefaultFormidableAlert($node);
+    decorateInlineErrors($node);
+  }
+
+  function handleFormMutations(mutationsList) {
     for (var i = 0; i < mutationsList.length; i++) {
       var mutation = mutationsList[i];
-      if (mutation.type === 'childList' && mutation.addedNodes && mutation.addedNodes.length) {
+
+      if (mutation.type !== 'childList' || !mutation.addedNodes || !mutation.addedNodes.length) {
+        continue;
+      }
+
+      $(mutation.addedNodes).each(function () {
+        if (this && this.nodeType === 1) {
+          var $node = $(this);
+          processAddedNode($node);
+          observeFormidableContainers($node);
+        }
+      });
+    }
+  }
+
+  function observeFormidableContainers(root) {
+    if (!window.MutationObserver) {
+      return;
+    }
+
+    $(root || document).find('.frm_forms').each(function () {
+      var el = this;
+      if (el.nodeType !== 1 || el.getAttribute('data-ff-error-watching') === '1') {
+        return;
+      }
+
+      var observer = new MutationObserver(handleFormMutations);
+      observer.observe(el, { childList: true, subtree: true });
+      el.setAttribute('data-ff-error-watching', '1');
+      el.ffAccessibleErrorsObserver = observer;
+    });
+  }
+
+  function bootstrapFormObserver() {
+    if (!window.MutationObserver || !document.body) {
+      return;
+    }
+
+    var bootstrapObserver = new MutationObserver(function (mutationsList) {
+      for (var i = 0; i < mutationsList.length; i++) {
+        var mutation = mutationsList[i];
+        if (mutation.type !== 'childList' || !mutation.addedNodes || !mutation.addedNodes.length) {
+          continue;
+        }
+
         $(mutation.addedNodes).each(function () {
-          if (this.nodeType === 1) {
-            var $node = $(this);
-            if ($node.is('.ff-global-errors') || $node.find('.ff-global-errors').length) {
-              focusErrorSummaryIfPresent($node);
-              bindErrorLinkNavigation($node);
+          if (this && this.nodeType === 1) {
+            var node = this;
+            var matches =
+              node.matches || node.msMatchesSelector || node.webkitMatchesSelector;
+
+            if (matches && matches.call(node, '.frm_forms')) {
+              observeFormidableContainers(node);
+            } else if (node.querySelector && node.querySelector('.frm_forms')) {
+              observeFormidableContainers(node);
             }
-			muteDefaultFormidableAlert($node);
-			decorateInlineErrors($node);
           }
         });
       }
-    }
-  });
+    });
 
-  // Observe the whole document body; lightweight and robust across themes.
-  if (document.body) {
-    observer.observe(document.body, { childList: true, subtree: true });
+    bootstrapObserver.observe(document.body, { childList: true, subtree: true });
   }
 /*Remove role=alert from formidables page level error div*/
 function muteDefaultFormidableAlert(root) {
