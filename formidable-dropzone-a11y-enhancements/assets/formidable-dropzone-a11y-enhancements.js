@@ -1,6 +1,43 @@
 (function ($) {
   'use strict';
 
+  var DROPZONE_SELECTOR = '.frm_dropzone, [id$="_dropzone"]';
+  var requestFrame = window.requestAnimationFrame ? window.requestAnimationFrame.bind(window) : function (cb) { return setTimeout(cb, 16); };
+  var pendingContexts = [];
+  var enhanceScheduled = false;
+
+  function hasDropzoneGlobals() {
+    return typeof window.__frmDropzone !== 'undefined' || typeof window.__frmAjaxDropzone !== 'undefined';
+  }
+
+  function scheduleEnhance(context) {
+    var ctx = context || document;
+    var hasDocumentQueued = pendingContexts.some(function (item) { return item === document; });
+
+    if (ctx === document) {
+      pendingContexts = [document];
+    } else if (!hasDocumentQueued) {
+      var alreadyQueued = pendingContexts.some(function (item) { return item === ctx; });
+      if (!alreadyQueued) {
+        pendingContexts.push(ctx);
+      }
+    }
+
+    if (enhanceScheduled) {
+      return;
+    }
+
+    enhanceScheduled = true;
+    requestFrame(function () {
+      enhanceScheduled = false;
+      var contexts = pendingContexts.slice();
+      pendingContexts = [];
+      for (var i = 0; i < contexts.length; i++) {
+        enhanceUploads(contexts[i]);
+      }
+    });
+  }
+
   // Utility: safely focus an element
   function safeFocus($el) {
     if (!$el || !$el.length) return;
@@ -244,7 +281,11 @@
   // Accessible uploads: auto-detect dropzones and wire everything up
   function enhanceUploads(context) {
     var $ctx = context ? $(context) : $(document);
-    var $dropzones = $ctx.find('.frm_dropzone, [id$="_dropzone"]');
+    var $dropzones = $ctx.find(DROPZONE_SELECTOR);
+
+    if (!$dropzones.length) {
+      return 0;
+    }
 
     $dropzones.each(function () {
       var $drop = $(this);
@@ -261,11 +302,6 @@
       }
 
       // Remove redundant group role from the dropzone container to avoid extra announcements
-      if ($drop.is('[role="group"]')) {
-        $drop.removeAttr('role');
-      }
-
-      // Remove redundant group role from the dropzone container
       if ($drop.is('[role="group"]')) {
         $drop.removeAttr('role');
       }
@@ -306,9 +342,9 @@
           var $p = $(file && file.previewElement ? file.previewElement : null);
           if ($p && $p.length) {
             fixRemoveLinkA11yForPreview($p, fname);
-            $p.find('.dz-remove').off('click.frm-a11y').on('click.frm-a11y', handleRemoveClickFactory($drop, $btn, $live));
-            var $remove = $p.find('.dz-remove').first();
-            if ($remove.length) safeFocus($remove);
+            $p.find('.dz-filename').off('click.frm-a11y').on('click.frm-a11y', handleRemoveClickFactory($drop, $btn, $live));
+            var $filename = $p.find('.dz-filename').first();
+            if ($filename.length) safeFocus($filename);
           }
           // Clear uploading state if none processing
           var anyProcessing = $drop.find('.dz-preview.dz-processing').length > 0;
@@ -404,30 +440,38 @@
         observer.observe($drop.get(0), { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
       } catch (e) { /* graceful */ }
     });
+
+    return $dropzones.length;
+    return $dropzones.length;
   }
 
   // Run on load and after ajax updates
   $(function () {
-    enhanceUploads(document);
+    var initialCount = enhanceUploads(document);
+    var hasDropzoneSignal = initialCount > 0 || hasDropzoneGlobals();
+
+    if (!hasDropzoneSignal) {
+      return;
+    }
 
     // Formidable AJAX lifecycle hooks: re-scan the form context after updates
     $(document).on('frmFormErrors', function (_event, form /*, response */) {
       // Validation errors returned via AJAX; form content was updated
-      enhanceUploads(form);
+      scheduleEnhance(form);
     });
 
     $(document).on('frmPageChanged', function (_event, form /*, response */) {
       // Multi-page AJAX navigation; page content replaced
-      enhanceUploads(form);
+      scheduleEnhance(form);
     });
 
     // Fallback for jQuery-based AJAX flows on the site
     $(document).on('ajaxComplete', function () {
-      enhanceUploads(document);
+      scheduleEnhance(document);
     });
 
     setTimeout(function () {
-      enhanceUploads(document);
+      scheduleEnhance(document);
     }, 0);
 
     // Robust fallback for non-jQuery injections (fetch, framework renders, etc.)
@@ -440,8 +484,8 @@
               var node = m.addedNodes[j];
               if (node && node.nodeType === 1) {
                 // If this node is or contains a dropzone, enhance within this subtree
-                if (node.matches && (node.matches('.frm_dropzone, [id$="_dropzone"]') || node.querySelector('.frm_dropzone, [id$="_dropzone"]'))) {
-                  enhanceUploads(node);
+                if (node.matches && (node.matches(DROPZONE_SELECTOR) || node.querySelector(DROPZONE_SELECTOR))) {
+                  scheduleEnhance(node);
                 }
               }
             }

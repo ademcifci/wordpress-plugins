@@ -14,11 +14,13 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 class Formidable_Global_A11y_Enhancements {
-    const OPTION_KEY = 'ff_globa11y';
+    const OPTION_KEY    = 'ff_globa11y';
+    const SCRIPT_HANDLE = 'formidable-global-a11y-enhancements';
 
     public function __construct() {
         add_action( 'init', [ $this, 'load_textdomain' ] );
         add_action( 'wp_enqueue_scripts', [ $this, 'enqueue_assets' ] );
+        add_action( 'wp_footer', [ $this, 'maybe_enqueue_assets' ], 5 );
         add_action( 'admin_menu', [ $this, 'register_settings_page' ] );
         add_action( 'admin_init', [ $this, 'register_settings' ] );
         add_filter( 'frm_replace_shortcodes', [ $this, 'inject_describedby_for_choice_inputs' ], 20, 3 );
@@ -31,8 +33,8 @@ class Formidable_Global_A11y_Enhancements {
     public function enqueue_assets() {
         $ver = '1.2.4';
 
-        wp_enqueue_script(
-            'formidable-global-a11y-enhancements',
+        wp_register_script(
+            self::SCRIPT_HANDLE,
             plugins_url( 'assets/formidable-global-a11y-enhancements.js', __FILE__ ),
             [ 'jquery' ],
             $ver,
@@ -42,7 +44,7 @@ class Formidable_Global_A11y_Enhancements {
         $settings = $this->get_settings();
         $accessible_errors_active = class_exists( 'FF_Accessible_Error_Summary' );
         wp_localize_script(
-            'formidable-global-a11y-enhancements',
+            self::SCRIPT_HANDLE,
             'ff_globa11y',
             [
                 'other_fields_fix'       => (bool) $settings['other_fields_fix'],
@@ -58,6 +60,17 @@ class Formidable_Global_A11y_Enhancements {
                 'remove_alert_role_on_field_errors' => (bool) ( ! apply_filters( 'frm_include_alert_role_on_field_errors', true ) ),
             ]
         );
+    }
+
+    /**
+     * Enqueue the frontend script only when Formidable forms are present.
+     */
+    public function maybe_enqueue_assets() {
+        if ( ! $this->should_enqueue_frontend_script() ) {
+            return;
+        }
+
+        wp_enqueue_script( self::SCRIPT_HANDLE );
     }
 
     public function register_settings_page() {
@@ -175,6 +188,21 @@ class Formidable_Global_A11y_Enhancements {
             self::OPTION_KEY,
             'fga11y_main'
         );
+
+        // Add aria-describedby to the role=group container instead of each input.
+        add_settings_field(
+            'choice_group_describedby',
+            __( 'Add aria-describedby to choice group container', 'formidable-global-a11y-enhancements' ),
+            function () {
+                $settings = $this->get_settings();
+                $checked  = ! empty( $settings['choice_group_describedby'] ) ? 'checked' : '';
+                $name     = esc_attr( self::OPTION_KEY ) . '[choice_group_describedby]';
+                echo '<label><input type="checkbox" name="' . $name . '" value="1" ' . $checked . '> ' . esc_html__( 'Enable', 'formidable-global-a11y-enhancements' ) . '</label>';
+                echo '<p class="description">' . esc_html__( 'Targets the element with role="group"/"radiogroup" (Formidable\'s default .frm_opt_container) so the whole choice set references the description/error once. Enabling this will automatically disable the per-input option above.', 'formidable-global-a11y-enhancements' ) . '</p>';
+            },
+            self::OPTION_KEY,
+            'fga11y_main'
+        );
     }
 
     public function render_settings_page() {
@@ -205,6 +233,7 @@ class Formidable_Global_A11y_Enhancements {
             'success_message_focus'  => empty( $in['success_message_focus'] ) ? 0 : 1,
             'multi_page_focus'       => empty( $in['multi_page_focus'] ) ? 0 : 1,
             'choice_describedby'     => empty( $in['choice_describedby'] ) ? 0 : 1,
+            'choice_group_describedby' => empty( $in['choice_group_describedby'] ) ? 0 : 1,
             'multi_page_focus_level' => ( function() use ( $in, $current, $defaults ) {
                 if ( array_key_exists( 'multi_page_focus_level', $in ) ) {
                     $val = (int) $in['multi_page_focus_level'];
@@ -215,13 +244,18 @@ class Formidable_Global_A11y_Enhancements {
             } )(),
         ];
 
+        if ( ! empty( $out['choice_group_describedby'] ) ) {
+            $out['choice_describedby'] = 0;
+        }
+
         return wp_parse_args( $out, $defaults );
     }
 
-    // Only input-level injection.
     public function inject_describedby_for_choice_inputs( $html, $field, $atts ) {
         $settings = $this->get_settings();
-        if ( empty( $settings['choice_describedby'] ) ) {
+        $use_group = ! empty( $settings['choice_group_describedby'] );
+        $use_input = ! empty( $settings['choice_describedby'] );
+        if ( ( ! $use_group && ! $use_input ) || $this->should_skip_choice_filter() ) {
             return $html;
         }
 
@@ -246,41 +280,193 @@ class Formidable_Global_A11y_Enhancements {
             return $html;
         }
 
-        $pattern = '/<input\b([^>]*?)\s*(?:\/?)>/i';
-        $html    = preg_replace_callback(
-            $pattern,
-            function ( $m ) use ( $should_add_desc, $desc_id, $has_error, $err_id ) {
-                $inner = $m[1];
-                if ( ! preg_match( '/\btype=(\"|\')?(radio|checkbox)\1?/i', $inner ) ) {
-                    return $m[0];
-                }
+        $targets = [];
+        if ( $has_error ) {
+            $targets[] = $err_id;
+        }
+        if ( $should_add_desc ) {
+            $targets[] = $desc_id;
+        }
+        if ( empty( $targets ) ) {
+            return $html;
+        }
 
-                $existing = [];
-                if ( preg_match( '/aria-describedby\s*=\s*(["\'])(.*?)\1/i', $inner, $adb ) ) {
-                    $existing = preg_split( '/\s+/', trim( $adb[2] ) );
-                }
+        if ( $use_group ) {
+            $updated = $this->inject_choice_group_describedby( $html, $targets, 'field_' . $field_key . '_label' );
+            if ( null !== $updated ) {
+                return $updated;
+            }
+            if ( ! $use_input ) {
+                return $html;
+            }
+        }
 
-                $wanted = [];
-                if ( $has_error ) { $wanted[] = $err_id; }
-                if ( $should_add_desc ) { $wanted[] = $desc_id; }
-                if ( empty( $wanted ) ) { return $m[0]; }
+        if ( ! $use_input ) {
+            return $html;
+        }
 
-                $final = array_values( array_unique( array_merge( $existing, $wanted ) ) );
-                $attr  = 'aria-describedby="' . esc_attr( implode( ' ', $final ) ) . '"';
+        return $this->inject_choice_input_describedby( $html, $targets );
+    }
 
-                if ( preg_match( '/aria-describedby\s*=\s*(["\'])(.*?)\1/i', $inner ) ) {
-                    $inner = preg_replace( '/aria-describedby\s*=\s*(["\'])(.*?)\1/i', $attr, $inner );
-                } else {
-                    $inner = rtrim( $inner ) . ' ' . $attr . ' ';
-                }
+    /**
+     * Adds aria-describedby to the Formidable multiple-choice container (role=group).
+     *
+     * @param string $html   Original field HTML.
+     * @param array  $ids    List of ids to merge into aria-describedby.
+     * @param string $label_fragment The aria-labelledby value to match (field_[key]_label).
+     * @return string|null   Modified HTML or null when no matching element was found.
+     */
+    private function inject_choice_group_describedby( $html, array $ids, $label_fragment ) {
+        $dom_setup = $this->prepare_dom_document( $html );
+        if ( ! $dom_setup ) {
+            return null;
+        }
 
-                $selfclose = ( substr( trim( $m[0] ), -2 ) === '/>' ) ? '/>' : '>';
-                return '<input ' . $inner . $selfclose;
-            },
-            $html
-        );
+        list( $dom, $wrapper ) = $dom_setup;
+        $xpath                 = new DOMXPath( $dom );
+        $nodes                 = $xpath->query( '//*[@role="group" or @role="radiogroup"]' );
 
+        if ( ! $nodes || ! $nodes->length ) {
+            return null;
+        }
+
+        $target = null;
+        foreach ( $nodes as $node ) {
+            $class_attr = $node->getAttribute( 'class' );
+            $label_attr = $node->getAttribute( 'aria-labelledby' );
+            $class_hit  = ( $class_attr && false !== stripos( $class_attr, 'frm_opt_container' ) );
+            $label_hit  = ( $label_attr && false !== stripos( $label_attr, $label_fragment ) );
+            if ( $class_hit || $label_hit ) {
+                $target = $node;
+                break;
+            }
+        }
+
+        if ( ! $target ) {
+            return null;
+        }
+
+        $changed = $this->merge_dom_describedby_ids( $target, $ids );
+        if ( ! $changed ) {
+            return null;
+        }
+
+        return $this->dom_inner_html( $wrapper );
+    }
+
+    /**
+     * Adds aria-describedby per <input> element (fallback/legacy behaviour).
+     *
+     * @param string $html Original field HTML.
+     * @param array  $ids  List of ids to merge.
+     * @return string
+     */
+    private function inject_choice_input_describedby( $html, array $ids ) {
+        $dom_setup = $this->prepare_dom_document( $html );
+        if ( ! $dom_setup ) {
+            return $html;
+        }
+
+        list( $dom, $wrapper ) = $dom_setup;
+        $xpath                 = new DOMXPath( $dom );
+        $query                 = '//input[translate(@type,"ABCDEFGHIJKLMNOPQRSTUVWXYZ","abcdefghijklmnopqrstuvwxyz")="radio" or translate(@type,"ABCDEFGHIJKLMNOPQRSTUVWXYZ","abcdefghijklmnopqrstuvwxyz")="checkbox"]';
+        $nodes                 = $xpath->query( $query );
+
+        if ( ! $nodes || ! $nodes->length ) {
+            return $html;
+        }
+
+        $updated = false;
+        foreach ( $nodes as $node ) {
+            if ( $this->merge_dom_describedby_ids( $node, $ids ) ) {
+                $updated = true;
+            }
+        }
+
+        if ( ! $updated ) {
+            return $html;
+        }
+
+        return $this->dom_inner_html( $wrapper );
+    }
+
+    /**
+     * Prepare a DOMDocument with a wrapper so we can safely edit fragments.
+     *
+     * @param string $html
+     * @return array|null
+     */
+    private function prepare_dom_document( $html ) {
+        if ( ! class_exists( 'DOMDocument' ) ) {
+            return null;
+        }
+
+        $dom       = new DOMDocument();
+        $prev_lib  = libxml_use_internal_errors( true );
+        $lib_flags = 0;
+        if ( defined( 'LIBXML_HTML_NOIMPLIED' ) ) {
+            $lib_flags |= LIBXML_HTML_NOIMPLIED;
+        }
+        if ( defined( 'LIBXML_HTML_NODEFDTD' ) ) {
+            $lib_flags |= LIBXML_HTML_NODEFDTD;
+        }
+        $wrapped = '<div data-ff-globa11y-wrapper="1">' . $html . '</div>';
+        $loaded  = $dom->loadHTML( '<?xml encoding="utf-8" ?>' . $wrapped, $lib_flags );
+        libxml_clear_errors();
+        libxml_use_internal_errors( $prev_lib );
+        if ( ! $loaded ) {
+            return null;
+        }
+
+        $xpath   = new DOMXPath( $dom );
+        $wrapper = $xpath->query( '//*[@data-ff-globa11y-wrapper="1"]' );
+        if ( ! $wrapper || ! $wrapper->length ) {
+            return null;
+        }
+
+        return [ $dom, $wrapper->item( 0 ) ];
+    }
+
+    /**
+     * Convert wrapper children back to HTML.
+     *
+     * @param DOMNode $wrapper
+     * @return string
+     */
+    private function dom_inner_html( $wrapper ) {
+        $html = '';
+        foreach ( $wrapper->childNodes as $child ) {
+            $html .= $wrapper->ownerDocument->saveHTML( $child );
+        }
         return $html;
+    }
+
+    /**
+     * Merge aria-describedby values onto a DOM element.
+     *
+     * @param DOMElement $node
+     * @param array      $ids
+     * @return bool
+     */
+    private function merge_dom_describedby_ids( $node, array $ids ) {
+        if ( empty( $ids ) ) {
+            return false;
+        }
+
+        $existing_attr = trim( (string) $node->getAttribute( 'aria-describedby' ) );
+        $existing      = $existing_attr !== '' ? preg_split( '/\s+/', $existing_attr ) : [];
+        $final         = array_values( array_unique( array_merge( $existing, $ids ) ) );
+        if ( empty( $final ) ) {
+            return false;
+        }
+
+        $new_value = implode( ' ', $final );
+        if ( $existing_attr === $new_value ) {
+            return false;
+        }
+
+        $node->setAttribute( 'aria-describedby', $new_value );
+        return true;
     }
 
     private function defaults() {
@@ -291,6 +477,7 @@ class Formidable_Global_A11y_Enhancements {
             'multi_page_focus'       => 1,
             'multi_page_focus_level' => 1,
             'choice_describedby'     => 1,
+            'choice_group_describedby' => 0,
         ];
     }
 
@@ -300,6 +487,61 @@ class Formidable_Global_A11y_Enhancements {
             $saved = [];
         }
         return wp_parse_args( $saved, $this->defaults() );
+    }
+
+    /**
+     * Determine if current request printed any Formidable markup.
+     *
+     * @return bool
+     */
+    private function has_formidable_markup() {
+        global $frm_vars;
+        if ( isset( $frm_vars['forms_loaded'] ) && ! empty( $frm_vars['forms_loaded'] ) ) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Check if we should enqueue the watcher-heavy script on this request.
+     *
+     * @return bool
+     */
+    private function should_enqueue_frontend_script() {
+        if ( is_admin() || wp_doing_ajax() ) {
+            return false;
+        }
+
+        if ( ! wp_script_is( self::SCRIPT_HANDLE, 'registered' ) ) {
+            // Registration failed or never ran; nothing to enqueue.
+            return false;
+        }
+
+        return $this->has_formidable_markup();
+    }
+
+    /**
+     * Prevent the shortcode filter from altering markup in admin/builder contexts.
+     *
+     * @return bool
+     */
+    private function should_skip_choice_filter() {
+        if ( is_admin() && ! wp_doing_ajax() ) {
+            return true;
+        }
+
+        if ( class_exists( 'FrmAppHelper' ) ) {
+            if ( method_exists( 'FrmAppHelper', 'is_preview_page' ) && FrmAppHelper::is_preview_page() ) {
+                return true;
+            }
+
+            if ( method_exists( 'FrmAppHelper', 'is_formidable_admin' ) && FrmAppHelper::is_formidable_admin() ) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }
 
@@ -316,6 +558,7 @@ register_activation_hook( __FILE__, function () {
             'multi_page_focus'       => 1,
             'multi_page_focus_level' => 1,
             'choice_describedby'     => 1,
+            'choice_group_describedby' => 0,
         ] );
     }
 } );
